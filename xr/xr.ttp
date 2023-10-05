@@ -57,13 +57,13 @@ end-set {{ _end_ }}
 <group name="policies">
 route-policy {{ name | _start_ }}
   <group name="conditions*">
-  // if,elseif
+  ## if,elseif
   {{ if | re("(else)?(if)?") | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
     <group name="actions*">
     {{ action | _line_ }}
     </group>
   {{ fi | re("(endif)?(else)?(elseif)?") | _end_ }}
-  // else
+  ## else
   {{ if | re("(else)?") | _start_ }} 
     <group name="actions*">
     {{ action | _line_ }}
