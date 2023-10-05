@@ -1,0 +1,73 @@
+<macro>
+def split_by_conditions(data):
+    item = {}
+    if "and" in data:
+        item["op"] = "and"
+        item["conditions"] = [ x.strip() for x in data.split("and")]
+    elif "or" in data:
+        item["op"] = "or"
+        item["conditions"] = [ x.strip() for x in data.split("or")]
+    else:
+        item["op"] = "state"
+        item["conditions"] = [ data.strip()]
+    return item
+
+def strip_whitespace(data):
+    return data.strip()
+
+def split_by_line(data):
+    return data.split('\n')
+</macro>
+
+<group name="prefix-set">
+prefix-set {{ name | _start_ }}
+  <group name="prefixes">
+  {{ prefix }} {{ condition }} {{ length }},
+  </group>
+  <group name="prefixes">
+  {{ prefix }} {{ condition }} {{ length }}
+  </group>
+  <group name="prefixes">
+  {{ prefix }}
+  </group>
+end-set {{ _end_ }}
+</group>
+
+<group name="as-path-set">
+as-path-set {{ name | _start_ }}
+  <group name="conditions">
+  ios-regex {{ pattern | _line_ }}
+  </group>
+  <group name="conditions">
+  length {{ condition }} {{ length }}
+  </group>
+end-set {{ _end_ }}
+</group>
+
+<group name="community-set">
+community-set {{ name | _start_ }}
+  {{community}}
+end-set {{ _end_ }}
+</group>
+
+
+<group name="policies">
+route-policy {{ name | _start_ }}
+  <group name="conditions*">
+  // if,elseif
+  {{ if | re("(else)?(if)?") | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
+    {{ actions | _line_ | joinmatches | macro(split_by_line)}}
+  {{ fi | re("(endif)?(else)?(elseif)?") | _end_ }}
+  // else
+  {{ if | re("(else)?") | _start_ }} 
+    {{ actions | _line_ | joinmatches | macro(split_by_line)}}
+  {{ fi | re("(endif)?") | _end_ }}
+  </group>
+  <group name="default.actions*">
+  {{ action | re("(set)?(delete)?")}} {{ attr }} {{ value | _line_ }}
+  </group>
+  <group name="default.actions*">
+  {{ action | re("(pass)?(drop)?") }}
+  </group>
+! {{ _end_ }}
+</group>

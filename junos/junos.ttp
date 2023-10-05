@@ -1,0 +1,106 @@
+<macro>
+def split_by_line(a):
+    data = a.splitlines()
+    rules = dict()
+    for line in data:
+        words = line.split()
+        if len(words) == 1:
+            rules['actions'] = words[0]
+        else:
+            rules[words[0]] = ' '.join(words[1:])
+
+    return rules
+
+def as_list(data):
+    key, *value = data.split()
+    if value == []:
+        return [ { key: {  } } ]
+    else:
+        return [{data: ''.join(value)}]
+
+def as_dict(data):
+    return {data.split()[0]: data.split()[1]}
+
+def as_actions(data):
+    return { "actions": list(data[0].keys())[0] }
+
+def last_condition(data):
+    value = { "actions": data }
+    return { "ZZZZ" :  value  }
+
+</macro>
+
+<group>
+interfaces { {{ _start_ }}
+    <group name="interfaces*">
+    {{ name | _start_ }} {
+        unit {{ unit }} {
+            family {{ family }} {
+                address {{ address }};
+            }
+        }
+    } {{ _end_ }}
+    </group>
+} {{ _end_ }}
+</group>
+
+<group>
+policy-options {
+    
+    <group name="prefix-sets*">
+    prefix-list {{ name | _start_ }} {
+        <group name="prefixes*">
+        {{ prefix }};
+        </group>
+    } {{ _end_ }}
+    </group>
+
+    <group name="policies">
+    policy-statement {{ name | _start_ }} {
+
+        <group name="statements.{{name}}">
+        term {{ name | _start_ }} {
+
+            <group>
+            from { {{ _start_ }}
+                {{ conditions | _exact_space_ | _line_ | joinmatches | macro(split_by_line) }};
+            } {{ _end_ }}
+            </group>
+
+            <group>
+            from {{ conditions | _exact_space_ | _line_ | macro(split_by_line) }};
+            </group>
+ 
+            <group>
+            then {{ actions | _exact_space_ | _line_ | macro(split_by_line) }};
+            </group>
+
+            <group>
+            then { {{ _start_ }}
+                {{ actions | _exact_space_ | _line_ | joinmatches | macro(split_by_line) }};
+            } {{ _end_ }}
+            </group>
+
+        } {{ _end_ }}
+        </group>
+
+        <group name="default">
+        then {{ actions | _exact_space_ }}; 
+        </group>
+
+    } {{ _end_ }}
+    </group>
+
+    <group name="community-sets*">
+    community {{ community | _exact_space_ }} members {{ members }};
+    </group>
+
+    <group name="aspath-sets*">
+    as-path-group {{ group-name }} {
+        <group name="as-path">
+        as-path {{ name }} {{ pattern | _line_ | split}}
+        </group>
+    } {{ _end_ }}
+    </group>
+}
+</group>
