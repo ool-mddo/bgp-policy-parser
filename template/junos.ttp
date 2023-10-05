@@ -5,18 +5,19 @@ def split_by_line(a):
     for line in data:
         words = line.split()
         if len(words) == 1:
-            rules['actions'] = words[0]
+            rules['action'] = words[0]
         else:
             rules[words[0]] = ' '.join(words[1:])
 
     return rules
 
+
 def as_list(data):
     key, *value = data.split()
     if value == []:
-        return [ { key: {  } } ]
+        return [ { "action": key  } ]
     else:
-        return [{data: ''.join(value)}]
+        return [ { key: ''.join(value)}]
 
 def as_dict(data):
     return {data.split()[0]: data.split()[1]}
@@ -68,11 +69,11 @@ policy-options {
             </group>
 
             <group>
-            from {{ conditions | _exact_space_ | _line_ | macro(split_by_line) }};
+            from {{ conditions | _exact_space_ | _line_ | macro(as_list) }};
             </group>
  
             <group>
-            then {{ actions | _exact_space_ | _line_ | macro(split_by_line) }};
+            then {{ actions | _exact_space_ | _line_ | macro(as_list) }};
             </group>
 
             <group>
@@ -84,8 +85,8 @@ policy-options {
         } {{ _end_ }}
         </group>
 
-        <group name="default">
-        then {{ actions | _exact_space_ }}; 
+        <group name="default.actions*">
+        then {{ action | _exact_space_ }}; 
         </group>
 
     } {{ _end_ }}
@@ -98,7 +99,7 @@ policy-options {
     <group name="aspath-sets*">
     as-path-group {{ group-name }} {
         <group name="as-path">
-        as-path {{ name }} {{ pattern | _line_ | split}}
+        as-path {{ name }} {{ pattern | _line_ | split}};
         </group>
     } {{ _end_ }}
     </group>
