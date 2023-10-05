@@ -3,13 +3,13 @@ def split_by_conditions(data):
     item = {}
     if "and" in data:
         item["op"] = "and"
-        item["conditions"] = [ x.strip() for x in data.split("and")]
+        item["matches"] = [ x.strip() for x in data.split(" and ")]
     elif "or" in data:
         item["op"] = "or"
-        item["conditions"] = [ x.strip() for x in data.split("or")]
+        item["matches"] = [ x.strip() for x in data.split(" or ")]
     else:
         item["op"] = "state"
-        item["conditions"] = [ data.strip()]
+        item["matches"] = [ data.strip()]
     return item
 
 def strip_whitespace(data):
@@ -21,13 +21,16 @@ def split_by_line(data):
 
 <group name="prefix-set">
 prefix-set {{ name | _start_ }}
-  <group name="prefixes">
+  <group name="prefixes*">
   {{ prefix }} {{ condition }} {{ length }},
   </group>
-  <group name="prefixes">
+  <group name="prefixes*">
   {{ prefix }} {{ condition }} {{ length }}
   </group>
-  <group name="prefixes">
+  <group name="prefixes*">
+  {{ prefix }},
+  </group>
+  <group name="prefixes*">
   {{ prefix }}
   </group>
 end-set {{ _end_ }}
@@ -56,18 +59,22 @@ route-policy {{ name | _start_ }}
   <group name="conditions*">
   // if,elseif
   {{ if | re("(else)?(if)?") | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
-    {{ actions | _line_ | joinmatches | macro(split_by_line)}}
+    <group name="actions*">
+    {{ action | _line_ }}
+    </group>
   {{ fi | re("(endif)?(else)?(elseif)?") | _end_ }}
   // else
   {{ if | re("(else)?") | _start_ }} 
-    {{ actions | _line_ | joinmatches | macro(split_by_line)}}
+    <group name="actions*">
+    {{ action | _line_ }}
+    </group>
   {{ fi | re("(endif)?") | _end_ }}
   </group>
   <group name="default.actions*">
-  {{ action | re("(set)?(delete)?")}} {{ attr }} {{ value | _line_ }}
+  {{ action | re("(set)?(delete)?")| _exact_space_ }} {{ attr }} {{ value | _line_ }}
   </group>
   <group name="default.actions*">
-  {{ action | re("(pass)?(drop)?") }}
+  {{ action | re("(pass)?(drop)?") | _exact_space_ }}
   </group>
 ! {{ _end_ }}
 </group>
