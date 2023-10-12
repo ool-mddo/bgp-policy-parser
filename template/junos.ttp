@@ -1,21 +1,32 @@
 <macro>
+#def split_by_line(a):
+#    data = a.splitlines()
+#    rules = dict()
+#    for line in data:
+#        words = line.split()
+#        if len(words) == 1:
+#            rules['action'] = words[0]
+#        else:
+#            rules[words[0]] = ' '.join(words[1:])
+#
+#    return rules
+
 def split_by_line(a):
     data = a.splitlines()
-    rules = dict()
+    rules = list()
     for line in data:
         words = line.split()
         if len(words) == 1:
-            rules['action'] = words[0]
+            rules.append({'target': words[0]})
         else:
-            rules[words[0]] = ' '.join(words[1:])
+            rules.append({ words[0]: ' '.join(words[1:]) })
 
     return rules
-
 
 def as_list(data):
     key, *value = data.split()
     if value == []:
-        return [ { "action": key  } ]
+        return [ { "target": key  } ]
     else:
         return [ { key: ''.join(value)}]
 
@@ -59,7 +70,7 @@ policy-options {
     <group name="policies">
     policy-statement {{ name | _start_ }} {
 
-        <group name="statements.{{name}}">
+        <group name="statements.{{name}}*">
         term {{ name | _start_ }} {
 
             <group>
