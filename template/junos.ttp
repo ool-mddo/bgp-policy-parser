@@ -11,6 +11,9 @@
 #
 #    return rules
 
+def remove_left_right_char(data):
+    return data[1:-2]
+
 def split_by_line(a):
     data = a.splitlines()
     rules = list()
@@ -28,7 +31,7 @@ def as_list(data):
     if value == []:
         return [ { "target": key  } ]
     else:
-        return [ { key: ''.join(value)}]
+        return [ { key: ' '.join(value)}]
 
 def as_dict(data):
     return {data.split()[0]: data.split()[1]}
@@ -104,13 +107,22 @@ policy-options {
     </group>
 
     <group name="community-sets*">
-    community {{ community | _exact_space_ }} members {{ members }};
+    community {{ community | _exact_space_ }} members {{ members | resub(old='\]',new='',count=0) | resub(old='\[',new='',count=0) | _line_}};
+    </group>
+
+    <group name="community-sets*">
+    community {{ community | _start_ }} {
+        members {{ members | _exact_space_  | resub(old='\]',new='',count=0) | resub(old='\[',new='',count=0) | _line_ }};
+        <group name="properties*">
+        {{ property }};
+        </group>
+    } {{ _end_ }}
     </group>
 
     <group name="aspath-sets*">
     as-path-group {{ group-name }} {
         <group name="as-path">
-        as-path {{ name }} {{ pattern | _line_ | split}};
+        as-path {{ name }} {{ pattern | resub(old='\"',new='',count=0) | _line_ }};
         </group>
     } {{ _end_ }}
     </group>
