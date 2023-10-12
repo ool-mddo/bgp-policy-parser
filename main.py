@@ -135,6 +135,13 @@ for junos_output_file in junos_ttp_outputs:
                             "match_type": match_type
                         }
                     }
+
+                if "community" in condition.keys():
+                    communities = condition["community"].strip("[").strip("]").split()
+
+                    conditions[i] = {
+                        "community": communities
+                    }    
                 
             for i, action in enumerate(actions): 
                 if "as-path-prepend" in action.keys():
