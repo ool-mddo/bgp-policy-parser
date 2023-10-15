@@ -1,7 +1,9 @@
+import sys
 from ttp import ttp
 import os
 import json
 import glob
+from typing import Dict
 
 
 # configs/junos > * 引っ張る
@@ -9,10 +11,13 @@ import glob
 # result につっこむ xr > junos
 
 
-# constants (to be given via environment-variable)
-TTP_TEMPLATES_DIR = "./template"
-TTP_CONFIGS_DIR = "./configs"
-TTP_OUTPUT_DIR = "./ttp_output"
+# constants
+TTP_TEMPLATES_DIR = os.environ.get("TTP_TEMPLATES_DIR", "./template")
+TTP_CONFIGS_DIR = os.environ.get("TTP_CONFIGS_DIR", "./configs")
+TTP_OUTPUT_DIR = os.environ.get("TTP_OUTPUT_DIR", "./ttp_output")
+POLICY_MODEL_OUTPUT_DIR = os.environ.get(
+    "POLICY_MODEL_OUTPUT_DIR", "./policy_model_output"
+)
 
 
 def ttp_parse(text: str, os_type: str) -> str:
@@ -29,7 +34,7 @@ def ttp_parse(text: str, os_type: str) -> str:
     return json.dumps(parser.result(), indent=2)
 
 
-def save_parsed_result(os_type: str, config_file: str, parsed_result) -> None:
+def save_parsed_result(os_type: str, config_file: str, parsed_result: str) -> None:
     """Save parsed result
     Args:
         os_type (str): OS type string (junos, xr)
@@ -40,10 +45,29 @@ def save_parsed_result(os_type: str, config_file: str, parsed_result) -> None:
     """
     file_name = os.path.basename(config_file)
     file_name_wo_ext = os.path.splitext(file_name)[0]
-    result_file = os.path.join(TTP_OUTPUT_DIR, os_type, f"{file_name_wo_ext}.json")
+    result_dir = os.path.join(TTP_OUTPUT_DIR, os_type)
+    os.makedirs(result_dir, exist_ok=True)
+    result_file = os.path.join(result_dir, f"{file_name_wo_ext}.json")
     print(f"parse result saved: {result_file}")
     with open(result_file, "w") as f:
         f.write(parsed_result)
+
+
+def save_policy_model_output(ttp_result_file: str, model_output: Dict) -> None:
+    """Save policy model
+    Args:
+        ttp_result_file (str): File name of TTP result
+        model_output (Dict): Policy model data
+    Returns:
+        None
+    """
+    file_name = os.path.basename(ttp_result_file)
+    file_name_wo_ext = os.path.splitext(file_name)[0]
+    output_dir = POLICY_MODEL_OUTPUT_DIR
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = os.path.join(output_dir, file_name_wo_ext)
+    with open(output_file, "w") as f:
+        f.write(json.dumps(model_output, indent=2))
 
 
 def parse_files(os_type: str) -> None:
@@ -53,7 +77,15 @@ def parse_files(os_type: str) -> None:
     Returns:
         None:
     """
-    config_files = glob.glob(os.path.join(TTP_CONFIGS_DIR, os_type, "*"))
+    config_dir = os.path.join(TTP_CONFIGS_DIR, os_type)
+    if not os.path.isdir(config_dir):
+        print(
+            f"Error: config dir:{config_dir} for os_type:{os_type} is not found",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    config_files = glob.glob(os.path.join(config_dir, "*"))
     for config_file in config_files:
         with open(config_file, "r") as f:
             config_txt = f.read()
@@ -64,26 +96,20 @@ def parse_files(os_type: str) -> None:
 # main
 if __name__ == "__main__":
     parse_files("junos")
-    parse_files("xr")
-
     junos_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUT_DIR, "junos", "*"))
-    xr_ttp_output = glob.glob(os.path.join(TTP_OUTPUT_DIR, "xr", "*"))
 
     for junos_output_file in junos_ttp_outputs:
+        print(f"- target: {junos_output_file}")
 
-        print("=" * 60)
-        print(junos_output_file)
-        print("=" * 60)
-
-        filename = os.path.basename(junos_output_file)
         with open(junos_output_file, "r") as f:
-            result = json.load(f)[0][0][0]
+            data = json.load(f)
+            if any(data[0][0]) is False:
+                print("# parse result is empty (it seems non-bgp-speaker)")
+                continue
+            result = data[0][0][0]
 
         with open("policy_model.json", "r") as f:
             template = json.load(f)
-
-        print(result)
-        print(template)
 
         # node
         for item in result["interfaces"]:
@@ -119,17 +145,28 @@ if __name__ == "__main__":
                     elif "conditions" in rule:
                         conditions.extend(rule["conditions"])
                     else:
-                        print(f"NO RULE MATCHED: {rule}")
+                        print(f"# NO RULE MATCHED: {rule}")
 
                 for i, condition in enumerate(conditions):
-                    print(condition)
+                    print("  - condition : ", condition)
                     if "route-filter" in condition.keys():
                         prefix, *match_type_elem = condition["route-filter"].split()
-
+                        print("    - match_type_elem length: ", len(match_type_elem))
                         # exact
                         if len(match_type_elem) == 1:
                             # exact
                             length = dict()
+                            match_type = match_type_elem[0]
+                        elif len(match_type_elem) == 2:
+                            if match_type_elem[0] == "prefix-length-range":
+                                # ex. /25-/27 -> [25, 27]
+                                max_length, min_length = [
+                                    x.lstrip("/") for x in match_type_elem[1].split("-")
+                                ]
+                                length = {"max": max_length, "min": min_length}
+                            elif match_type_elem[0] == "upto":
+                                # "/"の排除
+                                length = {"max": match_type_elem[1].lstrip("/")}
                             match_type = match_type_elem[0]
                         elif len(match_type_elem) == 4:
                             if match_type_elem[2] == "prefix-length-range":
@@ -137,11 +174,10 @@ if __name__ == "__main__":
                                 max_length, min_length = [
                                     x.lstrip("/") for x in match_type_elem[3].split("-")
                                 ]
-                                lentgh = {"max": max_length, "min": min_length}
+                                length = {"max": max_length, "min": min_length}
                             elif match_type_elem[2] == "upto":
                                 # "/"の排除
                                 length = {"max": match_type_elem[3].lstrip("/")}
-
                             match_type = match_type_elem[2]
 
                         conditions[i] = {
@@ -200,16 +236,4 @@ if __name__ == "__main__":
             data = {"name": item["name"], "statements": statements, "default": default}
             template["policies"].append(data)
 
-        with open(f"./policy_model_output/{filename}", "w") as f:
-            f.write(json.dumps(template, indent=2))
-
-        # with open(sys.argv[1], 'r') as f:
-        #    config = f.read()
-        #
-        # with open(sys.argv[2], 'r') as f:
-        #    template = f.read()
-
-        # parser = ttp(config, template)
-        # parser.parse()
-        # result: list = parser.result()
-        # print(json.dumps(result, indent=2))
+        save_policy_model_output(junos_output_file, template)

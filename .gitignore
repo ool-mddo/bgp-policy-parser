@@ -1,5 +1,8 @@
 etc
 log
+configs
+policy_model_output
+ttp_output
 .vsls.json
 
 # https://github.com/github/gitignore/blob/main/Python.gitignore
