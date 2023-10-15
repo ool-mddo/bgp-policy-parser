@@ -3,7 +3,7 @@ from ttp import ttp
 import os
 import json
 import glob
-from typing import Dict
+from typing import Dict, List
 
 
 # configs/junos > * 引っ張る
@@ -12,15 +12,13 @@ from typing import Dict
 
 
 # constants
-TTP_TEMPLATES_DIR = os.environ.get("TTP_TEMPLATES_DIR", "./template")
-TTP_CONFIGS_DIR = os.environ.get("TTP_CONFIGS_DIR", "./configs")
-TTP_OUTPUT_DIR = os.environ.get("TTP_OUTPUT_DIR", "./ttp_output")
-POLICY_MODEL_OUTPUT_DIR = os.environ.get(
-    "POLICY_MODEL_OUTPUT_DIR", "./policy_model_output"
-)
+TTP_TEMPLATES_DIR = os.environ.get("MDDO_TTP_TEMPLATES_DIR", "./template")
+TTP_CONFIGS_DIR = os.environ.get("MDDO_TTP_CONFIGS_DIR", "./configs")
+TTP_OUTPUTS_DIR = os.environ.get("MDDO_TTP_OUTPUTS_DIR", "./ttp_output")
+BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_output")
 
 
-def ttp_parse(text: str, os_type: str) -> str:
+def ttp_parse(text: str, os_type: str) -> List:
     """Parse a config file with TTP according to its OS-type
     Args:
         text (str): Text data of config file (parse target contents)
@@ -31,26 +29,26 @@ def ttp_parse(text: str, os_type: str) -> str:
     template_file = os.path.join(TTP_TEMPLATES_DIR, f"{os_type}.ttp")
     parser = ttp(text, template_file)
     parser.parse()
-    return json.dumps(parser.result(), indent=2)
+    return parser.result()
 
 
-def save_parsed_result(os_type: str, config_file: str, parsed_result: str) -> None:
+def save_parsed_result(os_type: str, config_file: str, parser_result: List) -> None:
     """Save parsed result
     Args:
         os_type (str): OS type string (junos, xr)
         config_file (str): File path of a config file (parse target file)
-        parsed_result (str): TTP parsed result (json string)
+        parser_result (List): TTP parsed result
     Returns:
         None
     """
     file_name = os.path.basename(config_file)
     file_name_wo_ext = os.path.splitext(file_name)[0]
-    result_dir = os.path.join(TTP_OUTPUT_DIR, os_type)
-    os.makedirs(result_dir, exist_ok=True)
-    result_file = os.path.join(result_dir, f"{file_name_wo_ext}.json")
-    print(f"parse result saved: {result_file}")
-    with open(result_file, "w") as f:
-        f.write(parsed_result)
+    save_dir = os.path.join(TTP_OUTPUTS_DIR, os_type)
+    os.makedirs(save_dir, exist_ok=True)
+    save_file = os.path.join(save_dir, f"{file_name_wo_ext}.json")
+    print(f"parse result saved: {save_file}")
+    with open(save_file, "w") as f:
+        f.write(json.dumps(parser_result, indent=2))
 
 
 def save_policy_model_output(ttp_result_file: str, model_output: Dict) -> None:
@@ -63,10 +61,11 @@ def save_policy_model_output(ttp_result_file: str, model_output: Dict) -> None:
     """
     file_name = os.path.basename(ttp_result_file)
     file_name_wo_ext = os.path.splitext(file_name)[0]
-    output_dir = POLICY_MODEL_OUTPUT_DIR
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, file_name_wo_ext)
-    with open(output_file, "w") as f:
+    save_dir = BGP_POLICIES_DIR
+    os.makedirs(save_dir, exist_ok=True)
+    save_file = os.path.join(save_dir, file_name_wo_ext)
+    print(f"bgp policy saved: {save_file}")
+    with open(save_file, "w") as f:
         f.write(json.dumps(model_output, indent=2))
 
 
@@ -96,7 +95,7 @@ def parse_files(os_type: str) -> None:
 # main
 if __name__ == "__main__":
     parse_files("junos")
-    junos_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUT_DIR, "junos", "*"))
+    junos_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "junos", "*"))
 
     for junos_output_file in junos_ttp_outputs:
         print(f"- target: {junos_output_file}")
