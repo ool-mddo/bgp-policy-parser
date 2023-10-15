@@ -92,10 +92,9 @@ def parse_files(os_type: str) -> None:
         save_parsed_result(os_type, config_file, parsed)
 
 
-# main
 if __name__ == "__main__":
-    parse_files("junos")
-    junos_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "junos", "*"))
+    parse_files("juniper")
+    junos_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "juniper", "*"))
 
     for junos_output_file in junos_ttp_outputs:
         print(f"- target: {junos_output_file}")
