@@ -157,26 +157,15 @@ if __name__ == "__main__":
                             match_type = match_type_elem[0]
                         elif len(match_type_elem) == 2:
                             if match_type_elem[0] == "prefix-length-range":
-                                # ex. /25-/27 -> [25, 27]
+                                # ex. prefix-length-range /25-/27 -> {"min": 25, "max": 27}
                                 max_length, min_length = [
                                     x.lstrip("/") for x in match_type_elem[1].split("-")
                                 ]
                                 length = {"max": max_length, "min": min_length}
                             elif match_type_elem[0] == "upto":
-                                # "/"の排除
+                                # ex. upto /24 -> {"max": 24}
                                 length = {"max": match_type_elem[1].lstrip("/")}
                             match_type = match_type_elem[0]
-                        elif len(match_type_elem) == 4:
-                            if match_type_elem[2] == "prefix-length-range":
-                                # ex. /25-/27 -> [25, 27]
-                                max_length, min_length = [
-                                    x.lstrip("/") for x in match_type_elem[3].split("-")
-                                ]
-                                length = {"max": max_length, "min": min_length}
-                            elif match_type_elem[2] == "upto":
-                                # "/"の排除
-                                length = {"max": match_type_elem[3].lstrip("/")}
-                            match_type = match_type_elem[2]
 
                         conditions[i] = {
                             "route-filter": {
