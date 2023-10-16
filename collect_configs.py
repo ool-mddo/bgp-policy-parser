@@ -60,7 +60,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--snapshot",
         "-s",
-        required=True,
+        default="original_asis",
         type=str,
         help="Specify a target snapshot name",
     )
