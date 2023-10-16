@@ -4,7 +4,7 @@ import os
 import re
 import shutil
 import sys
-from typing import Dict, List
+from typing import List
 
 
 CONFIGS_DIR = os.environ.get("MDDO_CONFIGS_DIR", "./configs")
@@ -14,6 +14,13 @@ OS_TYPES = ["JUNIPER", "CISCO_IOS_XR"]
 
 
 def read_node_props(network: str, snapshot: str) -> List:
+    """Read node_props csv
+    Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
+    Returns:
+        List: rows of csv data
+    """
     snapshot_dir = os.path.join(QUERIES_DIR, network, snapshot)
     node_props_file = os.path.join(snapshot_dir, "node_props.csv")
     with open(node_props_file, "r") as f:
@@ -23,6 +30,13 @@ def read_node_props(network: str, snapshot: str) -> List:
 
 
 def detect_src_file_name(src_dir: os.path, node_name: str) -> str:
+    """Detect configuration file name using node name
+    Args:
+        src_dir (os.path): Source, snapshot directory (path)
+        node_name (str): Node name to find configuration file
+    Returns:
+        str: configuration file name
+    """
     file_names = os.listdir(src_dir)
     for file_name in file_names:
         # NOTE: search configuration file name starting node name
@@ -35,6 +49,14 @@ def detect_src_file_name(src_dir: os.path, node_name: str) -> str:
 
 
 def copy_configs(network: str, snapshot: str, node_props: List) -> None:
+    """Copy configurations for bgp-policy-parser
+    Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
+        node_props (List): node_props data
+    Returns:
+        None
+    """
     src_dir = os.path.join(CONFIGS_DIR, network, snapshot, "configs")
     for node_prop in node_props:
         os_type = node_prop["Configuration_Format"].lower()

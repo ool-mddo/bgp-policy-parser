@@ -12,6 +12,10 @@ MODEL_CONDUCTOR_HOST = os.environ.get("MODEL_CONDUCTOR_HOST", "model-conductor:9
 
 
 def read_bgp_policy_data() -> List:
+    """Read bgp-policy data from files
+    Returns:
+        List: all bgp policies
+    """
     bgp_policy_files = glob.glob(os.path.join(BGP_POLICIES_DIR, "*"))
     bgp_policies = []
     for bgp_policy_file in bgp_policy_files:
@@ -20,7 +24,13 @@ def read_bgp_policy_data() -> List:
     return bgp_policies
 
 
-def pack_policy_data(bgp_policy: Dict) -> Dict:
+def convert_policy(bgp_policy: Dict) -> Dict:
+    """Convert a policy (to merge topology data)
+    Args:
+        bgp_policy (Dict): A BGP policy
+    Returns:
+        Dict: A BGP policy (node-attribute patch format)
+    """
     return {
         "node-id": re.sub(r"/\d+$", "", bgp_policy["node"]),
         "mddo-topology:bgp-proc-node-attributes": {
@@ -33,11 +43,25 @@ def pack_policy_data(bgp_policy: Dict) -> Dict:
 
 
 def pack_policies(bgp_policies: List) -> Dict:
-    packed_data = {"node": [pack_policy_data(d) for d in bgp_policies]}
+    """Pack policy data to single Object
+    Args:
+        bgp_policies (List): Policies (list of policy)
+    Returns:
+        Dict: Node-attribute patches (includes attribute patch for several node)
+    """
+    packed_data = {"node": [convert_policy(d) for d in bgp_policies]}
     return packed_data
 
 
 def post_bgp_policy(network: str, snapshot: str, bgp_policy: Dict) -> None:
+    """Post node-attribute patches to merge topology data
+    Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
+        bgp_policy (Dict): Node attribute patches (packed policy data)
+    Returns:
+        None
+    """
     url = f"http://{MODEL_CONDUCTOR_HOST}/conduct/{network}/{snapshot}/topology/bgp_proc/policies"
     payload = json.dumps(bgp_policy)
     print(payload)  # debug
