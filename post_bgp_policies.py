@@ -37,8 +37,8 @@ def convert_policy(bgp_policy: Dict) -> Dict:
             "policy": bgp_policy["policies"],
             "prefix-set": bgp_policy["prefix-set"],
             "as-path-set": bgp_policy["as-path-set"],
-            "community-set": bgp_policy["community-set"]
-        }
+            "community-set": bgp_policy["community-set"],
+        },
     }
 
 
@@ -53,20 +53,19 @@ def pack_policies(bgp_policies: List) -> Dict:
     return packed_data
 
 
-def post_bgp_policy(network: str, snapshot: str, bgp_policy: Dict) -> None:
+def post_bgp_policy(network: str, snapshot: str, bgp_policy: Dict) -> requests.Response:
     """Post node-attribute patches to merge topology data
     Args:
         network (str): Network name
         snapshot (str): Snapshot name
         bgp_policy (Dict): Node attribute patches (packed policy data)
     Returns:
-        None
+        requests.Response
     """
     url = f"http://{MODEL_CONDUCTOR_HOST}/conduct/{network}/{snapshot}/topology/bgp_proc/policies"
     payload = json.dumps(bgp_policy)
-    print(payload)  # debug
-    headers = {'Content-Type': 'application/json'}
-    requests.post(url=url, data=payload, headers=headers)
+    headers = {"Content-Type": "application/json"}
+    return requests.post(url=url, data=payload, headers=headers)
 
 
 if __name__ == "__main__":
@@ -85,4 +84,8 @@ if __name__ == "__main__":
 
     bgp_policies = read_bgp_policy_data()
     packed_policy = pack_policies(bgp_policies)
-    post_bgp_policy(args.network, args.snapshot, packed_policy)
+
+    print("Post policy data")
+    response = post_bgp_policy(args.network, args.snapshot, packed_policy)
+    print(f"- status: {response.status_code}")
+    # print(f"- status: {response.text}")
