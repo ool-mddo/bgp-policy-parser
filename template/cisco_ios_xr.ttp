@@ -46,10 +46,10 @@ end-set {{ _end_ }}
 
 <group name="as-path-sets">
 as-path-set {{ name | _start_ }}
-  <group name="conditions">
+  <group name="conditions*">
   ios-regex {{ pattern | _line_ }}
   </group>
-  <group name="conditions">
+  <group name="conditions*">
   length {{ condition }} {{ length }}
   </group>
 end-set {{ _end_ }}

@@ -276,7 +276,7 @@ if __name__ == "__main__":
 
                     prefixes.append({
                         "prefix": prefix_obj["prefix"],
-                        "match_type": match_type,
+                        "match-type": match_type,
                         "length": length
                     })
 
@@ -285,11 +285,30 @@ if __name__ == "__main__":
                     "prefixes": prefixes,
                 })
 
-        print("- aspath-set")
+        print("- as-path-set")
         # as-path-set
-        if "aspath-sets" in result.keys():
-            for item in result["aspath-sets"]:
-                template["as-path-set"].append(item)
+        if "as-path-sets" in result.keys():
+            for aspath_obj in result["as-path-sets"]:
+                print(f"-- as-path-set: {aspath_obj}")
+                aspath_data = {
+                    "group-name": aspath_obj["name"],
+                    "as-path": {
+                        "name": aspath_obj["name"]
+                    }
+                }
+
+                for aspath_condition in aspath_obj["conditions"]:
+
+                    if "pattern" in aspath_condition.keys():
+                        aspath_data["as-path"]["pattern"] = aspath_condition["pattern"]
+
+                    if "length" in aspath_condition.keys():
+                        if aspath_condition["condition"] == "le":
+                            aspath_data["as-path"]["length"] = { "max": aspath_condition["length"]}
+                        elif aspath_condition["condition"] == "ge":
+                            aspath_data["as-path"]["length"] = { "min": aspath_condition["length"]}
+
+                template["as-path-set"].append(aspath_data)
 
         print("- community-set")
         # community-set
