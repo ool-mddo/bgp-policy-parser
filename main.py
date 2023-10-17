@@ -91,11 +91,9 @@ def parse_files(os_type: str) -> None:
             parsed = ttp_parse(config_txt, os_type)
         save_parsed_result(os_type, config_file, parsed)
 
-
 if __name__ == "__main__":
     parse_files("juniper")
     junos_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "juniper", "*"))
-    parse_files("cisco_ios_xr")
 
     for junos_output_file in junos_ttp_outputs:
         print(f"- target: {junos_output_file}")
@@ -225,3 +223,84 @@ if __name__ == "__main__":
             template["policies"].append(data)
 
         save_policy_model_output(junos_output_file, template)
+
+
+    parse_files("cisco_ios_xr")
+    xr_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "cisco_ios_xr", "*"))
+    for xr_output_file in xr_ttp_outputs:
+        print(f"- target: {xr_output_file}")
+
+        with open(xr_output_file, "r") as f:
+            data = json.load(f)
+            if any(data[0][0]) is False:
+                print("# parse result is empty (it seems non-bgp-speaker)")
+                continue
+            result = data[0][0]
+
+        with open("policy_model.json", "r") as f:
+            template = json.load(f)
+
+        # node
+        for item in result["interfaces"]:
+            if item["name"] == "Loopback0":
+                template["node"] = item["ipv4"]["address"]
+
+        print("- prefix-set")
+        # prefix-set
+        if "prefix-sets" in result.keys():
+            for item in result["prefix-sets"]:
+                print(f"-- prefix-set: {item}")
+                prefixes = []
+                for prefix_obj in item["prefixes"]:
+
+                    prefix_length = prefix_obj["prefix"].split("/")[-1]
+
+                    length = {}
+
+                    if "condition" in prefix_obj.keys():
+                        conditions = prefix_obj["condition"].split()
+                        if len(conditions) == 2:
+                            if "ge" in conditions:
+                                match_type = "orlonger"
+                                length["min"] = conditions[1]
+                            elif "le" in conditions:
+                                match_type = "upto"
+                                length["max"] = conditions[1]
+                        elif len(conditions) == 4:
+                            match_type = "prefix-length-range"
+                            length["min"] = conditions[1]
+                            length["max"] = conditions[3]
+                    else:
+                        match_type = "exact"
+                        length = { "min": prefix_length, "max": prefix_length }
+
+                    prefixes.append({
+                        "prefix": prefix_obj["prefix"],
+                        "match_type": match_type,
+                        "length": length
+                    })
+
+                template["prefix-set"].append({
+                    "name": item["name"],
+                    "prefixes": prefixes,
+                })
+
+        print("- aspath-set")
+        # as-path-set
+        if "aspath-sets" in result.keys():
+            for item in result["aspath-sets"]:
+                template["as-path-set"].append(item)
+
+        print("- community-set")
+        # community-set
+        if "community-sets" in result.keys():
+            for item in result["community-sets"]:
+                print(f"-- community: {item}")
+                data = [{"name": item["name"], "community": item["communities"]}]
+                template["community-set"].append(data)
+
+        # policies
+        for item in result["policies"]:
+            statements = list()
+
+        save_policy_model_output(xr_output_file, template)

@@ -19,13 +19,21 @@ def split_by_line(data):
     return data.split('\n')
 </macro>
 
-<group name="prefix-set">
+<group name="interfaces*">
+interface {{ name | _start_ }}
+ <group name="ipv4">
+ ipv4 address {{ address }} {{ mask }}
+ </group>
+! {{ _end_ }}
+</group>
+
+<group name="prefix-sets">
 prefix-set {{ name | _start_ }}
   <group name="prefixes*">
-  {{ prefix }} {{ condition }} {{ length }},
+  {{ prefix }} {{ condition | _line_ }},
   </group>
   <group name="prefixes*">
-  {{ prefix }} {{ condition }} {{ length }}
+  {{ prefix }} {{ condition | _line_ }}
   </group>
   <group name="prefixes*">
   {{ prefix }},
@@ -36,7 +44,7 @@ prefix-set {{ name | _start_ }}
 end-set {{ _end_ }}
 </group>
 
-<group name="as-path-set">
+<group name="as-path-sets">
 as-path-set {{ name | _start_ }}
   <group name="conditions">
   ios-regex {{ pattern | _line_ }}
@@ -47,7 +55,7 @@ as-path-set {{ name | _start_ }}
 end-set {{ _end_ }}
 </group>
 
-<group name="community-set">
+<group name="community-sets">
 community-set {{ name | _start_ }}
   <group name="communities*">
   {{ community }},
@@ -70,18 +78,12 @@ route-policy {{ name | _start_ }}
   <group name="conditions*">
   ## if,elseif
   {{ if | re("(else)?(if)?") | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
-    <group name="apply">
-    apply {{ policy }}
-    </group>
     <group name="actions*">
     {{ action | _line_ }}
     </group>
   {{ fi | re("(endif)?(else)?(elseif)?") | _end_ }}
   ## else
   {{ if | re("(else)?") | _start_ }} 
-    <group name="apply">
-    apply {{ policy }}
-    </group>
     <group name="actions*">
     {{ action | _line_ }}
     </group>
