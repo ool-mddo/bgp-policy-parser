@@ -49,22 +49,39 @@ end-set {{ _end_ }}
 
 <group name="community-set">
 community-set {{ name | _start_ }}
-  {{community}}
+  <group name="communities*">
+  {{ community }},
+  </group>
+  <group name="communities*">
+  {{ community }}
+  </group>
+  <group name="communities*">
+  ios-regex '{{ pattern }}'
+  </group>
 end-set {{ _end_ }}
 </group>
 
 
 <group name="policies">
 route-policy {{ name | _start_ }}
+  <group name="apply">
+  apply {{ policy }}
+  </group>
   <group name="conditions*">
   ## if,elseif
   {{ if | re("(else)?(if)?") | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
+    <group name="apply">
+    apply {{ policy }}
+    </group>
     <group name="actions*">
     {{ action | _line_ }}
     </group>
   {{ fi | re("(endif)?(else)?(elseif)?") | _end_ }}
   ## else
   {{ if | re("(else)?") | _start_ }} 
+    <group name="apply">
+    apply {{ policy }}
+    </group>
     <group name="actions*">
     {{ action | _line_ }}
     </group>
@@ -74,7 +91,7 @@ route-policy {{ name | _start_ }}
   {{ action | re("(set)?(delete)?")| _exact_space_ }} {{ attr }} {{ value | _line_ }}
   </group>
   <group name="default.actions*">
-  {{ action | re("(pass)?(drop)?") | _exact_space_ }}
+  {{ action | re("(pass)?(drop)?(done)?") | _exact_space_ }}
   </group>
 ! {{ _end_ }}
 </group>
