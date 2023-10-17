@@ -95,6 +95,7 @@ def parse_files(os_type: str) -> None:
 if __name__ == "__main__":
     parse_files("juniper")
     junos_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "juniper", "*"))
+    parse_files("cisco_ios_xr")
 
     for junos_output_file in junos_ttp_outputs:
         print(f"- target: {junos_output_file}")
