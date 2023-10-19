@@ -200,10 +200,10 @@ if __name__ == "__main__":
                         conditions[i] = {"as-path-prepend": {"asn": asn}}
 
                     if "community" in action.keys():
-                        community_action, name = action["community"].split()
+                        community_action, community_name = action["community"].split()
 
                         actions[i] = {
-                            "community": {"action": community_action, "name": name}
+                            "community": {"action": community_action, "name": community_name}
                         }
 
                 statement_data = {
