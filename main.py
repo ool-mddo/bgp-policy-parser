@@ -297,16 +297,18 @@ if __name__ == "__main__":
                     }
                 }
 
-                for aspath_condition in aspath_obj["conditions"]:
+                if "conditions" in aspath_obj.keys():
 
-                    if "pattern" in aspath_condition.keys():
-                        aspath_data["as-path"]["pattern"] = aspath_condition["pattern"]
+                    for aspath_condition in aspath_obj["conditions"]:
 
-                    if "length" in aspath_condition.keys():
-                        if aspath_condition["condition"] == "le":
-                            aspath_data["as-path"]["length"] = { "max": aspath_condition["length"]}
-                        elif aspath_condition["condition"] == "ge":
-                            aspath_data["as-path"]["length"] = { "min": aspath_condition["length"]}
+                        if "pattern" in aspath_condition.keys():
+                            aspath_data["as-path"]["pattern"] = aspath_condition["pattern"]
+
+                        if "length" in aspath_condition.keys():
+                            if aspath_condition["condition"] == "le":
+                                aspath_data["as-path"]["length"] = { "max": aspath_condition["length"]}
+                            elif aspath_condition["condition"] == "ge":
+                                aspath_data["as-path"]["length"] = { "min": aspath_condition["length"]}
 
                 template["as-path-set"].append(aspath_data)
 
