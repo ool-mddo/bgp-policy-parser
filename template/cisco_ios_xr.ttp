@@ -1,10 +1,10 @@
 <macro>
 def split_by_conditions(data):
     item = {}
-    if "and" in data:
+    if "and" in data.split():
         item["op"] = "and"
         item["matches"] = [ x.strip() for x in data.split(" and ")]
-    elif "or" in data:
+    elif "or" in data.split():
         item["op"] = "or"
         item["matches"] = [ x.strip() for x in data.split(" or ")]
     else:
@@ -17,7 +17,20 @@ def strip_whitespace(data):
 
 def split_by_line(data):
     return data.split('\n')
+
+def to_dict(data):
+    key, *value = data.split()
+    return {"value": ''.join(value)}
 </macro>
+
+<vars name="vars">
+begin_if = "(if|else|elseif)"
+end_if = "(endif|else|elseif)"
+pass_drop_done = "(pass|drop|done)"
+set_delete = "(set|delete)"
+not_if = "^(pass|drop|done|set|delte|apply).*"
+apply = "apply.*"
+</vars>
 
 <group name="interfaces*">
 interface {{ name | _start_ }}
@@ -72,28 +85,77 @@ end-set {{ _end_ }}
 
 <group name="policies">
 route-policy {{ name | _start_ }}
-  <group name="apply">
-  apply {{ policy }}
-  </group>
-  <group name="conditions*">
+
+  <group name="rules*.conditions*">
   ## if,elseif
-  {{ if | re("(else)?(if)?") | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
-    <group name="actions*">
-    {{ action | _line_ }}
+  {{ if | | _exact_space_ | re(begin_if) | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
+
+    <group name="rules*">
+    {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }} 
     </group>
-  {{ fi | re("(endif)?(else)?(elseif)?") | _end_ }}
-  ## else
-  {{ if | re("(else)?") | _start_ }} 
-    <group name="actions*">
-    {{ action | _line_ }}
+    <group name="rules*">
+    {{ action | _exact_space_ | re(apply) }} {{ value }}
     </group>
-  {{ fi | re("(endif)?") | _end_ }}
+    <group name="rules*">
+    {{ action | _exact_space_ | re(pass_drop_done) }}
+    </group>
+
+    ## 2段目のif
+    <group name="rules*.conditions*">
+    {{ if | _exact_space_ | re(begin_if) | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
+      <group name="rules*">
+      {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+      </group>
+      <group name="rules*">
+      {{ action | _exact_space_ | re(apply) }} {{ value }}
+      </group>
+      <group name="rules*">
+      {{ action | _exact_space_ | re(pass_drop_done) }}
+      </group>
+
+      ## 3段目のif
+      <group name="rules*.conditions*">
+      {{ if | _exact_space_ | re(begin_if) | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
+        <group name="rules*">
+        {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+        </group>
+        <group name="rules*">
+        {{ action | _exact_space_ | re(apply) }} {{ value }}
+        </group>
+        <group name="rules*">
+        {{ action | _exact_space_ | re(pass_drop_done) }}
+        </group>
+      {{ fi | _exact_space_ | re(end_if) | _end_ }}
+      </group>
+    {{ fi | _exact_space_ | re(end_if) | _end_ }}
+    </group>
+  {{ fi | _exact_space_ | re(end_if) | _end_ }}
   </group>
-  <group name="default.actions*">
-  {{ action | re("(set)?(delete)?")| _exact_space_ }} {{ attr }} {{ value | _line_ }}
+## else
+  <group name="rules*.conditions*">
+  {{ if | _exact_space_ | re("(else)?") | _start_ }} 
+    <group name="rules*">
+    {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+    </group>
+    <group name="rules*">
+    {{ action | _exact_space_ | re(apply) }} {{ value }}
+    </group>
+    <group name="rules*">
+    {{ action | _exact_space_ | re(pass_drop_done) }}
+    </group>
+  {{ fi | _exact_space_ | re("(endif)?") | _end_ }}
   </group>
-  <group name="default.actions*">
-  {{ action | re("(pass)?(drop)?(done)?") | _exact_space_ }}
+
+  <group name="rules*">
+  {{ action | _exact_space_ | re(set_delete) }} {{ attr }} {{ value | _line_ }}
   </group>
+  <group name="rules*">
+  {{ action | _exact_space_ | re(apply) }} {{ value }}
+  </group>
+  <group name="rules*">
+  {{ action | _exact_space_ | re(pass_drop_done) }}
+  </group>
+
+end-policy
 ! {{ _end_ }}
 </group>
