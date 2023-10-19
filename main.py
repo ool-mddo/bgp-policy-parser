@@ -313,10 +313,11 @@ if __name__ == "__main__":
         print("- community-set")
         # community-set
         if "community-sets" in result.keys():
-            for item in result["community-sets"]:
-                print(f"-- community: {item}")
-                data = [{"name": item["name"], "community": item["communities"]}]
-                template["community-set"].append(data)
+            for community_obj in result["community-sets"]:
+                print(f"-- community: {community_obj}")
+                community_data = {"name": community_obj["name"], "communities": community_obj["communities"]}
+
+                template["community-set"].append(community_data)
 
         # policies
         for item in result["policies"]:
