@@ -91,6 +91,25 @@ def parse_files(os_type: str) -> None:
             parsed = ttp_parse(config_txt, os_type)
         save_parsed_result(os_type, config_file, parsed)
 
+def convert_prefix_list_into_route_filter(prefix_list_name: str, policy_data: dict) -> list:
+    """Convert prefix-list into route-filter
+    Args:
+        prefix_list_name (str): prefix_list name of Conversion target
+        policy_data (dict): policy data containing prefix-list 
+    Returns:
+        route_fliter_list (list): converted route-fliter data 
+    
+    """
+    route_filter_list = []
+    for item in policy_data["prefix-set"]:
+        if item["name"] == prefix_list_name:
+            for prefix_item in item["prefixes"]:
+                print(f"- convert prefix-list:{prefix_list_name} into route-filter {prefix_item['prefix']}")
+                route_filter_list.append({"route-filter": prefix_item})
+            return route_filter_list
+    print(f"{prefix_list_name} is not match in input_data")
+    return route_filter_list 
+
 if __name__ == "__main__":
     parse_files("juniper")
     junos_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "juniper", "*"))
@@ -170,7 +189,7 @@ if __name__ == "__main__":
                             "route-filter": {
                                 "prefix": prefix,
                                 "length": length,
-                                "match_type": match_type,
+                                "match-type": match_type,
                             }
                         }
 
@@ -182,7 +201,7 @@ if __name__ == "__main__":
                         conditions[i] = {
                             "prefix-list-filter": {
                                 "prefix-list": prefix_list,
-                                "match_type": match_type,
+                                "match-type": match_type,
                             }
                         }
 
