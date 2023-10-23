@@ -126,7 +126,7 @@ if __name__ == "__main__":
         # community-set
         if "community-sets" in result.keys():
             for item in result["community-sets"]:
-                data = [{"name": item["community"], "community": item["members"]}]
+                data = {"name": item["community"], "community": item["members"]}
                 template["community-set"].append(data)
 
         # policies
