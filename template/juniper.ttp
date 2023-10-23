@@ -84,8 +84,8 @@ policy-options {
         } {{ _end_ }}
         </group>
 
-        <group name="default.actions*">
-        then {{ action | _exact_space_ }}; 
+        <group name="default">
+        then {{ actions | _exact_space_ | _line_ | macro(as_list) }};
         </group>
 
     } {{ _end_ }}
