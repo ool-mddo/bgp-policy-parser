@@ -1,3 +1,4 @@
+import argparse
 import sys
 from ttp import ttp
 import os
@@ -12,7 +13,7 @@ from typing import Dict, List
 
 
 # constants
-TTP_TEMPLATES_DIR = os.environ.get("MDDO_TTP_TEMPLATES_DIR", "./template")
+TTP_TEMPLATES_DIR = "./template"
 TTP_CONFIGS_DIR = os.environ.get("MDDO_TTP_CONFIGS_DIR", "./configs")
 TTP_OUTPUTS_DIR = os.environ.get("MDDO_TTP_OUTPUTS_DIR", "./ttp_output")
 BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_output")
@@ -22,7 +23,7 @@ def ttp_parse(text: str, os_type: str) -> List:
     """Parse a config file with TTP according to its OS-type
     Args:
         text (str): Text data of config file (parse target contents)
-        os_type: (str): OS type string (junos, xr)
+        os_type: (str): OS type string (juniper, cisco_ios_xr)
     Returns:
         str: TTP parsed result (json string)
     """
@@ -32,10 +33,14 @@ def ttp_parse(text: str, os_type: str) -> List:
     return parser.result()
 
 
-def save_parsed_result(os_type: str, config_file: str, parser_result: List) -> None:
+def save_parsed_result(
+    network: str, snapshot: str, os_type: str, config_file: str, parser_result: List
+) -> None:
     """Save parsed result
     Args:
-        os_type (str): OS type string (junos, xr)
+        network (str): Network name
+        snapshot (str): Snapshot name
+        os_type (str): OS type string (juniper, cisco_ios_xr)
         config_file (str): File path of a config file (parse target file)
         parser_result (List): TTP parsed result
     Returns:
@@ -43,7 +48,7 @@ def save_parsed_result(os_type: str, config_file: str, parser_result: List) -> N
     """
     file_name = os.path.basename(config_file)
     file_name_wo_ext = os.path.splitext(file_name)[0]
-    save_dir = os.path.join(TTP_OUTPUTS_DIR, os_type)
+    save_dir = os.path.join(TTP_OUTPUTS_DIR, network, snapshot, os_type)
     os.makedirs(save_dir, exist_ok=True)
     save_file = os.path.join(save_dir, f"{file_name_wo_ext}.json")
     print(f"parse result saved: {save_file}")
@@ -51,9 +56,13 @@ def save_parsed_result(os_type: str, config_file: str, parser_result: List) -> N
         f.write(json.dumps(parser_result, indent=2))
 
 
-def save_policy_model_output(ttp_result_file: str, model_output: Dict) -> None:
+def save_policy_model_output(
+    network: str, snapshot: str, ttp_result_file: str, model_output: Dict
+) -> None:
     """Save policy model
     Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
         ttp_result_file (str): File name of TTP result
         model_output (Dict): Policy model data
     Returns:
@@ -61,7 +70,7 @@ def save_policy_model_output(ttp_result_file: str, model_output: Dict) -> None:
     """
     file_name = os.path.basename(ttp_result_file)
     file_name_wo_ext = os.path.splitext(file_name)[0]
-    save_dir = BGP_POLICIES_DIR
+    save_dir = os.path.join(BGP_POLICIES_DIR, network, snapshot)
     os.makedirs(save_dir, exist_ok=True)
     save_file = os.path.join(save_dir, file_name_wo_ext)
     print(f"bgp policy saved: {save_file}")
@@ -69,14 +78,16 @@ def save_policy_model_output(ttp_result_file: str, model_output: Dict) -> None:
         f.write(json.dumps(model_output, indent=2))
 
 
-def parse_files(os_type: str) -> None:
+def parse_files(network: str, snapshot: str, os_type: str) -> None:
     """Parse config files according to OS-type
     Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
         os_type (str): OS type string (junos, xr)
     Returns:
-        None:
+        None
     """
-    config_dir = os.path.join(TTP_CONFIGS_DIR, os_type)
+    config_dir = os.path.join(TTP_CONFIGS_DIR, network, snapshot, os_type)
     if not os.path.isdir(config_dir):
         print(
             f"Error: config dir:{config_dir} for os_type:{os_type} is not found",
@@ -89,11 +100,21 @@ def parse_files(os_type: str) -> None:
         with open(config_file, "r") as f:
             config_txt = f.read()
             parsed = ttp_parse(config_txt, os_type)
-        save_parsed_result(os_type, config_file, parsed)
+        save_parsed_result(network, snapshot, os_type, config_file, parsed)
 
-if __name__ == "__main__":
-    parse_files("juniper")
-    junos_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "juniper", "*"))
+
+def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
+    """
+    Parse juniper configs and generate bgp-policy data
+    Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
+    Returns:
+        None
+    """
+    parse_files(network, snapshot, "juniper")
+    junos_ttp_outputs_dir = os.path.join(TTP_OUTPUTS_DIR, network, snapshot, "juniper")
+    junos_ttp_outputs = glob.glob(os.path.join(junos_ttp_outputs_dir, "*"))
 
     for junos_output_file in junos_ttp_outputs:
         print(f"- target: {junos_output_file}")
@@ -203,7 +224,10 @@ if __name__ == "__main__":
                         community_action, community_name = action["community"].split()
 
                         actions[i] = {
-                            "community": {"action": community_action, "name": community_name}
+                            "community": {
+                                "action": community_action,
+                                "name": community_name,
+                            }
                         }
 
                 statement_data = {
@@ -222,11 +246,24 @@ if __name__ == "__main__":
             data = {"name": item["name"], "statements": statements, "default": default}
             template["policies"].append(data)
 
-        save_policy_model_output(junos_output_file, template)
+        save_policy_model_output(network, snapshot, junos_output_file, template)
 
 
-    parse_files("cisco_ios_xr")
-    xr_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "cisco_ios_xr", "*"))
+def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
+    """
+    Parse cisco_ios_xr configs and generate bgp policy data
+    Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
+    Returns:
+        None
+    """
+    parse_files(network, snapshot, "cisco_ios_xr")
+    xr_ttp_outputs_dir = os.path.join(
+        TTP_OUTPUTS_DIR, network, snapshot, "cisco_ios_xr"
+    )
+    xr_ttp_outputs = glob.glob(os.path.join(xr_ttp_outputs_dir, "*"))
+
     for xr_output_file in xr_ttp_outputs:
         print(f"- target: {xr_output_file}")
 
@@ -272,18 +309,22 @@ if __name__ == "__main__":
                             length["max"] = conditions[3]
                     else:
                         match_type = "exact"
-                        length = { "min": prefix_length, "max": prefix_length }
+                        length = {"min": prefix_length, "max": prefix_length}
 
-                    prefixes.append({
-                        "prefix": prefix_obj["prefix"],
-                        "match-type": match_type,
-                        "length": length
-                    })
+                    prefixes.append(
+                        {
+                            "prefix": prefix_obj["prefix"],
+                            "match-type": match_type,
+                            "length": length,
+                        }
+                    )
 
-                template["prefix-set"].append({
-                    "name": item["name"],
-                    "prefixes": prefixes,
-                })
+                template["prefix-set"].append(
+                    {
+                        "name": item["name"],
+                        "prefixes": prefixes,
+                    }
+                )
 
         print("- as-path-set")
         # as-path-set
@@ -292,9 +333,7 @@ if __name__ == "__main__":
                 print(f"-- as-path-set: {aspath_obj}")
                 aspath_data = {
                     "group-name": aspath_obj["name"],
-                    "as-path": {
-                        "name": aspath_obj["name"]
-                    }
+                    "as-path": {"name": aspath_obj["name"]},
                 }
 
                 if "conditions" in aspath_obj.keys():
@@ -302,13 +341,19 @@ if __name__ == "__main__":
                     for aspath_condition in aspath_obj["conditions"]:
 
                         if "pattern" in aspath_condition.keys():
-                            aspath_data["as-path"]["pattern"] = aspath_condition["pattern"]
+                            aspath_data["as-path"]["pattern"] = aspath_condition[
+                                "pattern"
+                            ]
 
                         if "length" in aspath_condition.keys():
                             if aspath_condition["condition"] == "le":
-                                aspath_data["as-path"]["length"] = { "max": aspath_condition["length"]}
+                                aspath_data["as-path"]["length"] = {
+                                    "max": aspath_condition["length"]
+                                }
                             elif aspath_condition["condition"] == "ge":
-                                aspath_data["as-path"]["length"] = { "min": aspath_condition["length"]}
+                                aspath_data["as-path"]["length"] = {
+                                    "min": aspath_condition["length"]
+                                }
 
                 template["as-path-set"].append(aspath_data)
 
@@ -317,7 +362,10 @@ if __name__ == "__main__":
         if "community-sets" in result.keys():
             for community_obj in result["community-sets"]:
                 print(f"-- community: {community_obj}")
-                community_data = {"name": community_obj["name"], "communities": community_obj["communities"]}
+                community_data = {
+                    "name": community_obj["name"],
+                    "communities": community_obj["communities"],
+                }
 
                 template["community-set"].append(community_data)
 
@@ -325,4 +373,22 @@ if __name__ == "__main__":
         for item in result["policies"]:
             statements = list()
 
-        save_policy_model_output(xr_output_file, template)
+        save_policy_model_output(network, snapshot, xr_output_file, template)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Collect configs to parse bgp-policy")
+    parser.add_argument(
+        "--network", "-n", required=True, type=str, help="Specify a target network name"
+    )
+    parser.add_argument(
+        "--snapshot",
+        "-s",
+        default="original_asis",
+        type=str,
+        help="Specify a target snapshot name",
+    )
+    args = parser.parse_args()
+
+    parse_juniper_bgp_policy(args.network, args.snapshot)
+    parse_cisco_ios_xr_bgp_policy(args.network, args.snapshot)

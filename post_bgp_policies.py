@@ -11,12 +11,16 @@ BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_outpu
 MODEL_CONDUCTOR_HOST = os.environ.get("MODEL_CONDUCTOR_HOST", "model-conductor:9292")
 
 
-def read_bgp_policy_data() -> List:
+def read_bgp_policy_data(network: str, snapshot: str) -> List:
     """Read bgp-policy data from files
+    Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
     Returns:
         List: all bgp policies
     """
-    bgp_policy_files = glob.glob(os.path.join(BGP_POLICIES_DIR, "*"))
+    bgp_policy_dir = os.path.join(BGP_POLICIES_DIR, network, snapshot)
+    bgp_policy_files = glob.glob(os.path.join(bgp_policy_dir, "*"))
     bgp_policies = []
     for bgp_policy_file in bgp_policy_files:
         with open(bgp_policy_file, "r") as f:
@@ -82,7 +86,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    bgp_policies = read_bgp_policy_data()
+    bgp_policies = read_bgp_policy_data(args.network, args.snapshot)
     packed_policy = pack_policies(bgp_policies)
 
     print("Post policy data")
