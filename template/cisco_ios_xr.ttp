@@ -86,7 +86,7 @@ end-set {{ _end_ }}
 <group name="policies">
 route-policy {{ name | _start_ }}
 
-  <group name="rules*.conditions*">
+  <group name="rules*">
   ## if,elseif
   {{ if | | _exact_space_ | re(begin_if) | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
 
@@ -101,7 +101,7 @@ route-policy {{ name | _start_ }}
     </group>
 
     ## 2段目のif
-    <group name="rules*.conditions*">
+    <group name="rules*">
     {{ if | _exact_space_ | re(begin_if) | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
       <group name="rules*">
       {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
@@ -114,7 +114,7 @@ route-policy {{ name | _start_ }}
       </group>
 
       ## 3段目のif
-      <group name="rules*.conditions*">
+      <group name="rules*">
       {{ if | _exact_space_ | re(begin_if) | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
         <group name="rules*">
         {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
@@ -132,8 +132,8 @@ route-policy {{ name | _start_ }}
   {{ fi | _exact_space_ | re(end_if) | _end_ }}
   </group>
 ## else
-  <group name="rules*.conditions*">
-  {{ if | _exact_space_ | re("(else)?") | _start_ }} 
+  <group name="rules*">
+  {{ if | _exact_space_ | re("else") | _start_ }} 
     <group name="rules*">
     {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
     </group>
@@ -143,7 +143,7 @@ route-policy {{ name | _start_ }}
     <group name="rules*">
     {{ action | _exact_space_ | re(pass_drop_done) }}
     </group>
-  {{ fi | _exact_space_ | re("(endif)?") | _end_ }}
+  {{ fi | _exact_space_ | re("endif") | _end_ }}
   </group>
 
   <group name="rules*">
