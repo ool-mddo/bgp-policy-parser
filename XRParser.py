@@ -9,29 +9,95 @@ class XRParser():
         self.aspath_set = []
         self.prefix_set = []
         self.policies = {}
-        self.ttp_parsed_data = ttp_parsed_data
-        self.logger = Logger()
+        self.ttp_parsed_data = json.loads(ttp_parsed_data)[0][0]
+        print(json.dumps(self.ttp_parsed_data,indent=2))
+        # TODO: print -> loggerへ変更
+        self.logger = Logger(__name__)
 
     def translate_node(self) -> None:
-        # node
+        print("- node")
         for item in self.ttp_parsed_data["interfaces"]:
             if item["name"] == "Loopback0":
-                self.node["node"] = item["ipv4"]["address"]
+                print(f"-- node: {item['ipv4']['address']}")
+                self.node = item["ipv4"]["address"]
+
+    def translate_community_set(self) -> None:
+        print("- community-set")
+        if "community-sets" in self.ttp_parsed_data.keys():
+            for community_obj in self.ttp_parsed_data["community-sets"]:
+                print(f"-- community: {community_obj}")
+                community_data = {"name": community_obj["name"], "communities": community_obj["communities"]}
+                self.community_set.append(community_data)
+    
+    def translate_aspath_set(self) -> None: 
+        print("- as-path-set")
+        if "as-path-sets" in self.ttp_parsed_data.keys():
+            for aspath_obj in self.ttp_parsed_data["as-path-sets"]:
+                print(f"-- as-path-set: {aspath_obj}")
+                aspath_data = {
+                    "group-name": aspath_obj["name"],
+                    "as-path": {
+                        "name": aspath_obj["name"]
+                    }
+                }
+
+                if "conditions" in aspath_obj.keys():
+
+                    for aspath_condition in aspath_obj["conditions"]:
+
+                        if "pattern" in aspath_condition.keys():
+                            aspath_data["as-path"]["pattern"] = aspath_condition["pattern"]
+
+                        if "length" in aspath_condition.keys():
+                            if aspath_condition["condition"] == "le":
+                                aspath_data["as-path"]["length"] = { "max": aspath_condition["length"]}
+                            elif aspath_condition["condition"] == "ge":
+                                aspath_data["as-path"]["length"] = { "min": aspath_condition["length"]}
+                self.aspath_set.append(aspath_data)
+
+    
+    def translate_prefix_set(self) -> None:
         print("- prefix-set")
+        if "prefix-sets" in self.ttp_parsed_data.keys():
+            for item in self.ttp_parsed_data["prefix-sets"]:
+                print(f"-- prefix-set: {item}")
+                prefixes = []
+                for prefix_obj in item["prefixes"]:
 
-    def parse_community_set(self, ttp_parsed_data: dict) -> list:
-        
-        pass
-    
-    def parse_aspath_set(self):
-        pass
-    
-    def parse_prefix_set(self):
-        pass
-    
+                    prefix_length = prefix_obj["prefix"].split("/")[-1]
 
-    def translate_rule(self, rule: dict) -> dict:
-    
+                    length = {}
+
+                    if "condition" in prefix_obj.keys():
+                        conditions = prefix_obj["condition"].split()
+                        if len(conditions) == 2:
+                            if "ge" in conditions:
+                                match_type = "orlonger"
+                                length["min"] = conditions[1]
+                            elif "le" in conditions:
+                                match_type = "upto"
+                                length["max"] = conditions[1]
+                        elif len(conditions) == 4:
+                            match_type = "prefix-length-range"
+                            length["min"] = conditions[1]
+                            length["max"] = conditions[3]
+                    else:
+                        match_type = "exact"
+                        length = { "min": prefix_length, "max": prefix_length }
+
+                    prefixes.append({
+                        "prefix": prefix_obj["prefix"],
+                        "match-type": match_type,
+                        "length": length
+                    })
+
+                self.prefix_set.append({
+                    "name": item["name"],
+                    "prefixes": prefixes,
+                })
+
+
+    def translate_rule(self, rule: dict) -> dict:    
         if rule['action'] == 'set':
             attr = rule['attr']
             if attr == 'med':
@@ -187,9 +253,17 @@ if __name__ == "__main__":
     with open(ttp_file, "r") as f:
         ttp_parsed_policy = f.read()
 
-    xrparser = XRParser()
-    xrparser.translate_policies(ttp_parsed_policy)
-    print(json.dumps(xrparser.policies, indent=2))
+    # xrparser = XRParser(ttp_parsed_policy)
+    # xrparser.translate_node()
+    # print(json.dumps(xrparser.node, indent=2))
+    # xrparser.translate_community_set()
+    # print(json.dumps(xrparser.community_set, indent=2))    
+    # xrparser.translate_aspath_set()
+    # print(json.dumps(xrparser.aspath_set, indent=2))    
+    # xrparser.translate_prefix_set()
+    # print(json.dumps(xrparser.prefix_set, indent=2))    
+    
+
 
 
 
