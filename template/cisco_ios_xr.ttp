@@ -28,7 +28,7 @@ begin_if = "(if|else|elseif)"
 end_if = "(endif|else|elseif)"
 pass_drop_done = "(pass|drop|done)"
 set_delete = "(set|delete)"
-not_if = "^(pass|drop|done|set|delte|apply).*"
+not_if = "^(pass|drop|done|set|delete|apply).*"
 apply = "apply.*"
 </vars>
 
@@ -130,9 +130,7 @@ route-policy {{ name | _start_ }}
     {{ fi | _exact_space_ | re(end_if) | _end_ }}
     </group>
   {{ fi | _exact_space_ | re(end_if) | _end_ }}
-  </group>
 ## else
-  <group name="rules*">
   {{ if | _exact_space_ | re("else") | _start_ }} 
     <group name="rules*">
     {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
@@ -155,7 +153,7 @@ route-policy {{ name | _start_ }}
   <group name="rules*">
   {{ action | _exact_space_ | re(pass_drop_done) }}
   </group>
-
+  
 end-policy
 ! {{ _end_ }}
 </group>
