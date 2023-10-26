@@ -361,5 +361,13 @@ if __name__ == "__main__":
 
     xrtranslator = XRTranslator(ttp_parsed_config)
     xrtranslator.translate_policies()
+    policy_model_output = {
+        "node": xrtranslator.node,
+        "prefix-set": xrtranslator.prefix_set,
+        "as-path-set": xrtranslator.aspath_set,
+        "community-set": xrtranslator.community_set,
+        "policies": xrtranslator.policies
+    }
+
     with open(output_file, "w") as f:
-        json.dump(xrtranslator.policies, fp=f, indent=2, cls=PMEncoder)
+        json.dump(policy_model_output, fp=f, indent=2, cls=PMEncoder)

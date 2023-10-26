@@ -252,5 +252,12 @@ if __name__ == "__main__":
             ttp_parsed_config = json.load(f)
         xr_translator = XRTranslator(ttp_parsed_config)
         xr_translator.translate_policies() 
+        policy_model_output = {
+            "node": xr_translator.node,
+            "prefix-set": xr_translator.prefix_set,
+            "as-path-set": xr_translator.aspath_set,
+            "community-set": xr_translator.community_set,
+            "policies": xr_translator.policies
+        }
 
-        save_policy_model_output(xr_output_file, xr_translator.policies)
+        save_policy_model_output(xr_output_file, policy_model_output)
