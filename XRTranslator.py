@@ -240,7 +240,7 @@ class XRTranslator():
                 statement.conditions.extend(conditions)
             else:
                 self.logger.info(f"{match} could not be translated.")
-                statement.conditions.extend([{ "TRANSLATION_FAILED": match }])
+                statement.conditions.extend([{ "_message": {"TRANSLATION_FAILED": match }}])
         
         statement.actions.append({ "target": "accept" })
         match_policy = PolicyModel(
@@ -301,7 +301,7 @@ class XRTranslator():
                     if inner_action:
                         statement.actions.append(inner_action)
                     else:
-                        self.logger.info(f"{inner_rule} could not be translated.")
+                        self.logger.info(f"{inner_rule1} could not be translated.")
 
                 statement.conditions.append({ "policy": match_policy.name })
 
@@ -309,7 +309,6 @@ class XRTranslator():
 
             elif rule["if"] == "elseif":
                 self.logger.info(f"'elseif' rule found in {policy.name}: {rule}")
-                in_conditional_chain = True
 
                 # if文の条件判定を行うためのポリシーを作成
                 match_policy, not_match_policy = self.generate_conditional_policies(
@@ -318,12 +317,12 @@ class XRTranslator():
                 )
                 self.policies.extend([match_policy, not_match_policy])
 
-                for inner_rule in rule["rules"]:
-                    inner_action = self.translate_rule(inner_rule) 
+                for inner_rule1 in rule["rules"]:
+                    inner_action = self.translate_rule(inner_rule1) 
                     if inner_action:
                         statement.actions.append(inner_action)
                     else:
-                        self.logger.info(f"{inner_rule} could not be translated.")
+                        self.logger.info(f"{inner_rule1} could not be translated.")
 
                 for past_policy in past_conditional_policies:
                     statement.conditions.append(
@@ -339,12 +338,12 @@ class XRTranslator():
                         { "policy": f"not-{past_policy.name}" }
                     )
                 
-                for inner_rule in rule["rules"]:
-                    inner_action = self.translate_rule(inner_rule)
+                for inner_rule1 in rule["rules"]:
+                    inner_action = self.translate_rule(inner_rule1)
                     if inner_action:
                         statement.actions.append(inner_action)
                     else:
-                        self.logger.info(f"{inner_rule} could not be translated.")
+                        self.logger.info(f"{inner_rule1} could not be translated.")
             else:
                 self.logger.info(f"rule not translated: {rule}")
 
