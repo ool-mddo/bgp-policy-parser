@@ -187,7 +187,7 @@ class XRTranslator:
             action = {"apply": rule["value"]}
 
         elif rule["action"] in ["pass", "drop", "done"]:
-            target_maps = {"pass": "next-term", "drop": "reject", "done": "accept"}
+            target_maps = {"pass": "next term", "drop": "reject", "done": "accept"}
             action = {"target": target_maps[rule["action"]]}
 
         return action
