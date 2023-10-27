@@ -130,8 +130,9 @@ class XRTranslator:
                         conditions = prefix_obj["condition"].split()
                         if len(conditions) == 2:
                             if "ge" in conditions:
-                                match_type = "orlonger"
+                                match_type = "prefix-length-range"
                                 length["min"] = conditions[1]
+                                length["max"] = "32"
                             elif "le" in conditions:
                                 match_type = "upto"
                                 length["max"] = conditions[1]
@@ -186,7 +187,7 @@ class XRTranslator:
             action = {"apply": rule["value"]}
 
         elif rule["action"] in ["pass", "drop", "done"]:
-            target_maps = {"pass": "next-term", "drop": "reject", "done": "accept"}
+            target_maps = {"pass": "next term", "drop": "reject", "done": "accept"}
             action = {"target": target_maps[rule["action"]]}
 
         return action
@@ -228,7 +229,7 @@ class XRTranslator:
         elif match.split()[0] == "community":
             _, op, community = match.split()
             if op == "matches-any":
-                condition.append({"community": community})
+                condition.append({"community": [community]})
                 return condition
             elif op == "matches-every":
                 self.logger.info("matches-every is not implemented")
