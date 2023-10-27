@@ -5,6 +5,7 @@ import os
 import json
 import glob
 from typing import Dict, List
+from XRTranslator import XRTranslator, PMEncoder
 
 
 # configs/junos > * 引っ張る
@@ -75,7 +76,7 @@ def save_policy_model_output(
     save_file = os.path.join(save_dir, file_name_wo_ext)
     print(f"bgp policy saved: {save_file}")
     with open(save_file, "w") as f:
-        f.write(json.dumps(model_output, indent=2))
+        f.write(json.dumps(model_output, indent=2, cls=PMEncoder))
 
 
 def parse_files(network: str, snapshot: str, os_type: str) -> None:
@@ -191,7 +192,7 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
                             "route-filter": {
                                 "prefix": prefix,
                                 "length": length,
-                                "match_type": match_type,
+                                "match-type": match_type,
                             }
                         }
 
@@ -203,7 +204,7 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
                         conditions[i] = {
                             "prefix-list-filter": {
                                 "prefix-list": prefix_list,
-                                "match_type": match_type,
+                                "match-type": match_type,
                             }
                         }
 
@@ -265,115 +266,19 @@ def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
     xr_ttp_outputs = glob.glob(os.path.join(xr_ttp_outputs_dir, "*"))
 
     for xr_output_file in xr_ttp_outputs:
-        print(f"- target: {xr_output_file}")
+        with open(xr_output_file) as f:
+            ttp_parsed_config = json.load(f)
+        xr_translator = XRTranslator(ttp_parsed_config)
+        xr_translator.translate_policies()
+        policy_model_output = {
+            "node": xr_translator.node,
+            "prefix-set": xr_translator.prefix_set,
+            "as-path-set": xr_translator.aspath_set,
+            "community-set": xr_translator.community_set,
+            "policies": xr_translator.policies,
+        }
 
-        with open(xr_output_file, "r") as f:
-            data = json.load(f)
-            if any(data[0][0]) is False:
-                print("# parse result is empty (it seems non-bgp-speaker)")
-                continue
-            result = data[0][0]
-
-        with open("policy_model.json", "r") as f:
-            template = json.load(f)
-
-        # node
-        for item in result["interfaces"]:
-            if item["name"] == "Loopback0":
-                template["node"] = item["ipv4"]["address"]
-
-        print("- prefix-set")
-        # prefix-set
-        if "prefix-sets" in result.keys():
-            for item in result["prefix-sets"]:
-                print(f"-- prefix-set: {item}")
-                prefixes = []
-                for prefix_obj in item["prefixes"]:
-
-                    prefix_length = prefix_obj["prefix"].split("/")[-1]
-
-                    length = {}
-
-                    if "condition" in prefix_obj.keys():
-                        conditions = prefix_obj["condition"].split()
-                        if len(conditions) == 2:
-                            if "ge" in conditions:
-                                match_type = "orlonger"
-                                length["min"] = conditions[1]
-                            elif "le" in conditions:
-                                match_type = "upto"
-                                length["max"] = conditions[1]
-                        elif len(conditions) == 4:
-                            match_type = "prefix-length-range"
-                            length["min"] = conditions[1]
-                            length["max"] = conditions[3]
-                    else:
-                        match_type = "exact"
-                        length = {"min": prefix_length, "max": prefix_length}
-
-                    prefixes.append(
-                        {
-                            "prefix": prefix_obj["prefix"],
-                            "match-type": match_type,
-                            "length": length,
-                        }
-                    )
-
-                template["prefix-set"].append(
-                    {
-                        "name": item["name"],
-                        "prefixes": prefixes,
-                    }
-                )
-
-        print("- as-path-set")
-        # as-path-set
-        if "as-path-sets" in result.keys():
-            for aspath_obj in result["as-path-sets"]:
-                print(f"-- as-path-set: {aspath_obj}")
-                aspath_data = {
-                    "group-name": aspath_obj["name"],
-                    "as-path": {"name": aspath_obj["name"]},
-                }
-
-                if "conditions" in aspath_obj.keys():
-
-                    for aspath_condition in aspath_obj["conditions"]:
-
-                        if "pattern" in aspath_condition.keys():
-                            aspath_data["as-path"]["pattern"] = aspath_condition[
-                                "pattern"
-                            ]
-
-                        if "length" in aspath_condition.keys():
-                            if aspath_condition["condition"] == "le":
-                                aspath_data["as-path"]["length"] = {
-                                    "max": aspath_condition["length"]
-                                }
-                            elif aspath_condition["condition"] == "ge":
-                                aspath_data["as-path"]["length"] = {
-                                    "min": aspath_condition["length"]
-                                }
-
-                template["as-path-set"].append(aspath_data)
-
-        print("- community-set")
-        # community-set
-        if "community-sets" in result.keys():
-            for community_obj in result["community-sets"]:
-                print(f"-- community: {community_obj}")
-                community_data = {
-                    "name": community_obj["name"],
-                    "communities": community_obj["communities"],
-                }
-
-                template["community-set"].append(community_data)
-
-        # policies
-        for item in result["policies"]:
-            statements = list()
-
-        save_policy_model_output(network, snapshot, xr_output_file, template)
+        save_policy_model_output(network, snapshot, xr_output_file, policy_model_output)
 
 
 if __name__ == "__main__":
