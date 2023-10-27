@@ -67,7 +67,7 @@ def copy_configs(network: str, snapshot: str, node_props: List) -> None:
         file_name = detect_src_file_name(src_dir, node_prop["Node"])
         src_file = os.path.join(src_dir, file_name)
 
-        dst_dir = os.path.join(TTP_CONFIGS_DIR, os_type)
+        dst_dir = os.path.join(TTP_CONFIGS_DIR, network, snapshot, os_type)
         os.makedirs(dst_dir, exist_ok=True)
         dst_file = os.path.join(dst_dir, file_name)
         print(f"  * copy {src_file} -> {dst_file}")
