@@ -3,6 +3,13 @@ from sys import stderr, stdout
 from logging import getLogger, StreamHandler, Formatter, INFO
 from dataclasses import dataclass, field, asdict, is_dataclass
 from typing import Union
+from enum import Enum
+
+class PolicyPrefix(Enum):
+    MATCH = "match-"
+    NOT_MATCH = "not-match-"
+    IF_CONDITION = "if-condition-"
+    NOT_IF_CONDITION = "not-if-condition-"
 
 class PMEncoder(json.JSONEncoder):
     def default(self, data):
@@ -62,6 +69,45 @@ class XRTranslator():
         if len(result) > 1:
             self.logger.info(f"multiple policy objects found for {name}.")
         return result[0]
+
+    def get_opposite_policy_name(self, name: str) -> Union[str, None]:
+        maps = {
+            PolicyPrefix.IF_CONDITION    : PolicyPrefix.NOT_IF_CONDITION,
+            PolicyPrefix.NOT_IF_CONDITION: PolicyPrefix.IF_CONDITION,
+            PolicyPrefix.MATCH           : PolicyPrefix.NOT_MATCH,
+            PolicyPrefix.NOT_MATCH       : PolicyPrefix.MATCH,
+        }
+        
+        if name.startswith(PolicyPrefix.IF_CONDITION.value):
+            opposite_policy_name = name.replace(
+                PolicyPrefix.IF_CONDITION.value,
+                maps[PolicyPrefix.IF_CONDITION].value
+            )
+        elif name.startswith(PolicyPrefix.NOT_IF_CONDITION.value):
+            opposite_policy_name = name.replace(
+                PolicyPrefix.NOT_IF_CONDITION.value,
+                maps[PolicyPrefix.NOT_IF_CONDITION].value
+            )
+        elif name.startswith(PolicyPrefix.MATCH.value):
+            opposite_policy_name = name.replace(
+                PolicyPrefix.MATCH.value,
+                maps[PolicyPrefix.MATCH].value
+            )
+        elif name.startswith(PolicyPrefix.NOT_MATCH.value):
+            opposite_policy_name = name.replace(
+                PolicyPrefix.NOT_MATCH.value,
+                maps[PolicyPrefix.NOT_MATCH].value
+            )
+        else:
+            self.logger.info("Could not find opposite policy for {name}.")
+            opposite_policy_name = None
+
+        if opposite_policy_name:
+            self.logger.info(f"opposite policy for '{name}' is '{opposite_policy_name}'")
+            return opposite_policy_name
+        else:
+            self.logger.info(f"opposite policy for '{name}' not found")
+            return None
 
     def update_policy(self, policy: PolicyModel):
         name = policy.name
@@ -187,7 +233,7 @@ class XRTranslator():
         if action:
             return action
         else:
-            return { "NOTIMPLEMENTED": rule }
+            return { }
 
     def convert_prefix_list_into_route_filter(self,prefix_list_name: str) -> list:
         """Convert prefix-list into route-filter
@@ -244,16 +290,16 @@ class XRTranslator():
         
         statement.actions.append({ "target": "accept" })
         match_policy = PolicyModel(
-            name=f"match-{basename}",
+            name=f"{PolicyPrefix.MATCH.value}{basename}",
             statements=[statement],
         )
         match_policy.set_default_reject()
 
         not_match_statement = Statement(name="10")
-        not_match_statement.conditions.append({ "policy": f"match-{basename}" })
+        not_match_statement.conditions.append({ "policy": f"{PolicyPrefix.MATCH.value}{basename}" })
         not_match_statement.actions.append({ "target": "reject" })
         not_match_policy = PolicyModel(
-            name=f"not-match-{basename}",
+            name=f"{PolicyPrefix.NOT_MATCH.value}{basename}",
             statements=[not_match_statement],
             default={"actions": [{}]}
         )
@@ -271,26 +317,26 @@ class XRTranslator():
         policy.name = ttp_policy["name"]
 
         count = 0
-        past_conditional_policies: list[PolicyModel] = []
+        past_if_condition_policies: list[PolicyModel] = []
 
         for rule in ttp_policy["rules"]:
             self.logger.info(f"start: {rule}")
             count += 10
             statement = Statement()
             statement.name = str(count)
+            policy_basename = f"{policy.name}-{count}"
 
             if "if" not in rule.keys():
                 action = self.translate_rule(rule)
                 statement.actions.append(action)
-                past_conditional_policies = []
+                past_if_condition_policies = []
 
             elif rule["if"] == "if":
                 self.logger.info(f"'if' rule found in {policy.name}: {rule}")
-                past_conditional_policies = []
-
+                past_if_condition_policies = []
                 # if文の条件判定を行うためのポリシーを作成
                 match_policy, not_match_policy = self.generate_conditional_policies(
-                    basename=f"{policy.name}-{count}",
+                    basename=policy_basename,
                     if_condition=rule["condition"]
                 )
                 self.policies.extend([match_policy, not_match_policy])
@@ -303,16 +349,27 @@ class XRTranslator():
                     else:
                         self.logger.info(f"{inner_rule1} could not be translated.")
 
-                statement.conditions.append({ "policy": match_policy.name })
+                if_policy = PolicyModel(
+                    name=f"{PolicyPrefix.IF_CONDITION.value}{policy_basename}",
+                    statements=[Statement(
+                        name="10", conditions=[{"policy": match_policy.name}],
+                        actions=[{ "target": "accept" }],
+                    )]
+                )
+                if_policy.set_default_reject()
 
-                past_conditional_policies.append(match_policy)
+                statement.conditions.append({ "policy": if_policy.name })
+
+                self.policies.append(if_policy)
+
+                past_if_condition_policies.append(if_policy)
 
             elif rule["if"] == "elseif":
                 self.logger.info(f"'elseif' rule found in {policy.name}: {rule}")
 
                 # if文の条件判定を行うためのポリシーを作成
                 match_policy, not_match_policy = self.generate_conditional_policies(
-                    basename=f"{policy.name}-{count}",
+                    basename=policy_basename,
                     if_condition=rule["condition"]
                 )
                 self.policies.extend([match_policy, not_match_policy])
@@ -324,19 +381,61 @@ class XRTranslator():
                     else:
                         self.logger.info(f"{inner_rule1} could not be translated.")
 
-                for past_policy in past_conditional_policies:
-                    statement.conditions.append(
-                        { "policy": f"not-{past_policy.name}" }
-                    )
-                statement.conditions.append({ "policy": match_policy.name })
 
-                past_conditional_policies.append(match_policy)
+                if_policy = PolicyModel(
+                    name=f"{PolicyPrefix.IF_CONDITION.value}{policy_basename}",
+                    statements=[]
+                )
+                if_policy.set_default_accept()
+
+                # elseifなので前にあるif/elseif節の条件に合致するものはrejectする
+                for i, past_policy in enumerate(past_if_condition_policies):
+                    if_policy.statements.append( 
+                        Statement(
+                            name=f"past-policy-{i}",
+                            conditions=[{ "policy": past_policy.name}],
+                            actions=[{ "target": "reject" }]
+                        )
+                    )
+
+                if_policy.statements.append(Statement(
+                    name="10", conditions=[{ "policy": not_match_policy.name }],
+                    actions=[{"target": "reject"}]
+                ))
+
+                statement.conditions.append({"policy": if_policy.name})
+
+                not_if_policy = PolicyModel(
+                    name=f"{PolicyPrefix.NOT_IF_CONDITION.value}{policy_basename}",
+                    statements=[Statement(
+                        name="10", conditions=[{ "policy": if_policy.name }],
+                        actions=[{"target": "reject"}]
+                    )]
+                )
+                not_if_policy.set_default_accept()
+
+                self.policies.extend([if_policy, not_if_policy])
+
+                past_if_condition_policies.append(if_policy)
 
             elif rule["if"] == "else":
-                for past_policy in past_conditional_policies:
-                    statement.conditions.append(
-                        { "policy": f"not-{past_policy.name}" }
-                    )
+                else_policy = PolicyModel(
+                    name=f"{PolicyPrefix.IF_CONDITION.value}{policy_basename}",
+                    default = {"actions": []}
+                )
+                statement.conditions.append({
+                    "policy": else_policy.name
+                })
+
+                # elseなので前にあるif/elseif節の条件に合致するものはrejectする
+                for i, past_policy in enumerate(past_if_condition_policies):
+                    else_policy.statements.append(Statement(
+                        name=f"past-policy-{i}",
+                        conditions=[{ "policy": past_policy.name }],
+                        actions=[{ "target": "reject" }]
+                    ))
+
+                self.policies.append(else_policy)
                 
                 for inner_rule1 in rule["rules"]:
                     inner_action = self.translate_rule(inner_rule1)
