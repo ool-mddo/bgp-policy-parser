@@ -131,6 +131,7 @@ route-policy {{ name | _start_ }}
     </group>
   {{ fi | _exact_space_ | re(end_if) | _end_ }}
 ## else
+  <group name="rules*">
   {{ if | _exact_space_ | re("else") | _start_ }} 
     <group name="rules*">
     {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
