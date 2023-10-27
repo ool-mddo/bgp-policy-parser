@@ -148,7 +148,10 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
         # community-set
         if "community-sets" in result.keys():
             for item in result["community-sets"]:
-                data = {"name": item["community"], "community": item["members"]}
+                data = {
+                    "name": item["community"], 
+                    "communities": [ {"community": member} for member in item["members"].split() ]
+                }
                 template["community-set"].append(data)
 
         # policies
