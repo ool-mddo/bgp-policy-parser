@@ -1,3 +1,4 @@
+import argparse
 import sys
 from ttp import ttp
 import os
@@ -13,7 +14,7 @@ from XRTranslator import XRTranslator, PMEncoder
 
 
 # constants
-TTP_TEMPLATES_DIR = os.environ.get("MDDO_TTP_TEMPLATES_DIR", "./template")
+TTP_TEMPLATES_DIR = "./template"
 TTP_CONFIGS_DIR = os.environ.get("MDDO_TTP_CONFIGS_DIR", "./configs")
 TTP_OUTPUTS_DIR = os.environ.get("MDDO_TTP_OUTPUTS_DIR", "./ttp_output")
 BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_output")
@@ -23,7 +24,7 @@ def ttp_parse(text: str, os_type: str) -> List:
     """Parse a config file with TTP according to its OS-type
     Args:
         text (str): Text data of config file (parse target contents)
-        os_type: (str): OS type string (junos, xr)
+        os_type: (str): OS type string (juniper, cisco_ios_xr)
     Returns:
         str: TTP parsed result (json string)
     """
@@ -33,10 +34,14 @@ def ttp_parse(text: str, os_type: str) -> List:
     return parser.result()
 
 
-def save_parsed_result(os_type: str, config_file: str, parser_result: List) -> None:
+def save_parsed_result(
+    network: str, snapshot: str, os_type: str, config_file: str, parser_result: List
+) -> None:
     """Save parsed result
     Args:
-        os_type (str): OS type string (junos, xr)
+        network (str): Network name
+        snapshot (str): Snapshot name
+        os_type (str): OS type string (juniper, cisco_ios_xr)
         config_file (str): File path of a config file (parse target file)
         parser_result (List): TTP parsed result
     Returns:
@@ -44,7 +49,7 @@ def save_parsed_result(os_type: str, config_file: str, parser_result: List) -> N
     """
     file_name = os.path.basename(config_file)
     file_name_wo_ext = os.path.splitext(file_name)[0]
-    save_dir = os.path.join(TTP_OUTPUTS_DIR, os_type)
+    save_dir = os.path.join(TTP_OUTPUTS_DIR, network, snapshot, os_type)
     os.makedirs(save_dir, exist_ok=True)
     save_file = os.path.join(save_dir, f"{file_name_wo_ext}.json")
     print(f"parse result saved: {save_file}")
@@ -52,9 +57,13 @@ def save_parsed_result(os_type: str, config_file: str, parser_result: List) -> N
         f.write(json.dumps(parser_result, indent=2))
 
 
-def save_policy_model_output(ttp_result_file: str, model_output: Dict) -> None:
+def save_policy_model_output(
+    network: str, snapshot: str, ttp_result_file: str, model_output: Dict
+) -> None:
     """Save policy model
     Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
         ttp_result_file (str): File name of TTP result
         model_output (Dict): Policy model data
     Returns:
@@ -62,7 +71,7 @@ def save_policy_model_output(ttp_result_file: str, model_output: Dict) -> None:
     """
     file_name = os.path.basename(ttp_result_file)
     file_name_wo_ext = os.path.splitext(file_name)[0]
-    save_dir = BGP_POLICIES_DIR
+    save_dir = os.path.join(BGP_POLICIES_DIR, network, snapshot)
     os.makedirs(save_dir, exist_ok=True)
     save_file = os.path.join(save_dir, file_name_wo_ext)
     print(f"bgp policy saved: {save_file}")
@@ -70,14 +79,16 @@ def save_policy_model_output(ttp_result_file: str, model_output: Dict) -> None:
         f.write(json.dumps(model_output, indent=2, cls=PMEncoder))
 
 
-def parse_files(os_type: str) -> None:
+def parse_files(network: str, snapshot: str, os_type: str) -> None:
     """Parse config files according to OS-type
     Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
         os_type (str): OS type string (junos, xr)
     Returns:
-        None:
+        None
     """
-    config_dir = os.path.join(TTP_CONFIGS_DIR, os_type)
+    config_dir = os.path.join(TTP_CONFIGS_DIR, network, snapshot, os_type)
     if not os.path.isdir(config_dir):
         print(
             f"Error: config dir:{config_dir} for os_type:{os_type} is not found",
@@ -90,30 +101,21 @@ def parse_files(os_type: str) -> None:
         with open(config_file, "r") as f:
             config_txt = f.read()
             parsed = ttp_parse(config_txt, os_type)
-        save_parsed_result(os_type, config_file, parsed)
+        save_parsed_result(network, snapshot, os_type, config_file, parsed)
 
-def convert_prefix_list_into_route_filter(prefix_list_name: str, policy_data: dict) -> list:
-    """Convert prefix-list into route-filter
-    Args:
-        prefix_list_name (str): prefix_list name of Conversion target
-        policy_data (dict): policy data containing prefix-list 
-    Returns:
-        route_fliter_list (list): converted route-fliter data 
-    
+
+def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
     """
-    route_filter_list = []
-    for item in policy_data["prefix-set"]:
-        if item["name"] == prefix_list_name:
-            for prefix_item in item["prefixes"]:
-                print(f"- convert prefix-list:{prefix_list_name} into route-filter {prefix_item['prefix']}")
-                route_filter_list.append({"route-filter": prefix_item})
-            return route_filter_list
-    print(f"{prefix_list_name} is not match in input_data")
-    return route_filter_list 
-
-if __name__ == "__main__":
-    parse_files("juniper")
-    junos_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "juniper", "*"))
+    Parse juniper configs and generate bgp-policy data
+    Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
+    Returns:
+        None
+    """
+    parse_files(network, snapshot, "juniper")
+    junos_ttp_outputs_dir = os.path.join(TTP_OUTPUTS_DIR, network, snapshot, "juniper")
+    junos_ttp_outputs = glob.glob(os.path.join(junos_ttp_outputs_dir, "*"))
 
     for junos_output_file in junos_ttp_outputs:
         print(f"- target: {junos_output_file}")
@@ -223,7 +225,10 @@ if __name__ == "__main__":
                         community_action, community_name = action["community"].split()
 
                         actions[i] = {
-                            "community": {"action": community_action, "name": community_name}
+                            "community": {
+                                "action": community_action,
+                                "name": community_name,
+                            }
                         }
 
                 statement_data = {
@@ -242,15 +247,53 @@ if __name__ == "__main__":
             data = {"name": item["name"], "statements": statements, "default": default}
             template["policies"].append(data)
 
-        save_policy_model_output(junos_output_file, template)
+        save_policy_model_output(network, snapshot, junos_output_file, template)
 
 
-    parse_files("cisco_ios_xr")
-    xr_ttp_outputs = glob.glob(os.path.join(TTP_OUTPUTS_DIR, "cisco_ios_xr", "*"))
+def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
+    """
+    Parse cisco_ios_xr configs and generate bgp policy data
+    Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
+    Returns:
+        None
+    """
+    parse_files(network, snapshot, "cisco_ios_xr")
+    xr_ttp_outputs_dir = os.path.join(
+        TTP_OUTPUTS_DIR, network, snapshot, "cisco_ios_xr"
+    )
+    xr_ttp_outputs = glob.glob(os.path.join(xr_ttp_outputs_dir, "*"))
+
     for xr_output_file in xr_ttp_outputs:
         with open(xr_output_file) as f:
             ttp_parsed_config = json.load(f)
         xr_translator = XRTranslator(ttp_parsed_config)
-        xr_translator.translate_policies() 
+        xr_translator.translate_policies()
+        policy_model_output = {
+            "node": xr_translator.node,
+            "prefix-set": xr_translator.prefix_set,
+            "as-path-set": xr_translator.aspath_set,
+            "community-set": xr_translator.community_set,
+            "policies": xr_translator.policies,
+        }
 
-        save_policy_model_output(xr_output_file, xr_translator.policies)
+        save_policy_model_output(network, snapshot, xr_output_file, policy_model_output)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Collect configs to parse bgp-policy")
+    parser.add_argument(
+        "--network", "-n", required=True, type=str, help="Specify a target network name"
+    )
+    parser.add_argument(
+        "--snapshot",
+        "-s",
+        default="original_asis",
+        type=str,
+        help="Specify a target snapshot name",
+    )
+    args = parser.parse_args()
+
+    parse_juniper_bgp_policy(args.network, args.snapshot)
+    parse_cisco_ios_xr_bgp_policy(args.network, args.snapshot)
