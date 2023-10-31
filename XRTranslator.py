@@ -135,6 +135,11 @@ class XRTranslator:
             for item in self.ttp_parsed_data["prefix-sets"]:
                 self.logger.info(f"-- prefix-set: {item}")
                 prefixes = []
+
+                if "prefixes" not in item:
+                    self.logger.info(f"prefixes not found in {item}")
+                    continue
+
                 for prefix_obj in item["prefixes"]:
 
                     prefix_length = prefix_obj["prefix"].split("/")[-1]
