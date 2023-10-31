@@ -35,7 +35,7 @@ apply = "apply.*"
 <group name="interfaces*">
 interface {{ name | _start_ }}
  <group name="ipv4">
- ipv4 address {{ address }} {{ mask }}
+ ipv4 address {{ address | _exact_ }} {{ mask }}
  </group>
 ! {{ _end_ }}
 </group>
