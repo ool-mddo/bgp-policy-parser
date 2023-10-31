@@ -77,7 +77,7 @@ community-set {{ name | _start_ }}
   {{ community }}
   </group>
   <group name="communities*">
-  ios-regex '{{ pattern }}'
+  ios-regex '{{ community }}'
   </group>
 end-set {{ _end_ }}
 </group>
