@@ -1,6 +1,6 @@
 import json, sys, copy
 from sys import stderr, stdout
-from logging import getLogger, StreamHandler, Formatter, INFO
+from logging import getLogger, StreamHandler, Formatter, INFO, FileHandler, DEBUG
 from dataclasses import dataclass, field, asdict, is_dataclass
 from typing import Union
 
@@ -27,22 +27,27 @@ class PolicyModel:
 
 
 class XRTranslator:
-    def __init__(self, ttp_parsed_data: dict):
-        self.node = ""
-        self.community_set = []
-        self.aspath_set = []
-        self.prefix_set = []
-        self.policies: list[PolicyModel] = []
-        self.ttp_parsed_data = ttp_parsed_data[0][0]
-
+    def __init__(self):
         self.logger = getLogger("xr")
-        self.logger.setLevel(INFO)
-        formatter = Formatter("[{asctime}:{levelname}] {message}", style="{")
+        self.logger.setLevel(DEBUG)
+        formatter = Formatter("[{asctime} @{funcName}-{lineno}] {message}", style="{")
 
         sh = StreamHandler(stdout)
         sh.setFormatter(formatter)
         sh.setLevel(INFO)
         self.logger.addHandler(sh)
+
+        fh = FileHandler('parser.log')
+        fh.setFormatter(formatter)
+        fh.setLevel(DEBUG)
+        self.logger.addHandler(fh)
+
+    def load_ttp_parsed_config(self, ttp_parsed_data: dict):
+        self.node = ""
+        self.community_set = []
+        self.aspath_set = []
+        self.prefix_set = []
+        self.policies: list[PolicyModel] = []
 
         self.ttp_parsed_data = ttp_parsed_data[0][0]
 
@@ -67,11 +72,21 @@ class XRTranslator:
         self.policies[target_index] = policy
 
     def translate_node(self) -> None:
-        self.logger.info("- node")
-        for item in self.ttp_parsed_data["interfaces"]:
-            if item["name"] == "Loopback0":
-                self.logger.info(f"-- node: {item['ipv4']['address']}")
-                self.node = item["ipv4"]["address"]
+        _loopback0 = [interface for interface in self.ttp_parsed_data['interfaces']
+                     if interface['name'] == 'Loopback0']
+
+        if not _loopback0:
+            self.logger.info("Loopback0 not found")
+            return
+        
+        loopback0: dict = _loopback0[0]
+        
+        if "ipv4" not in loopback0.keys():
+            self.logger.info(f"ipv4 address not found.")
+            return 
+
+        self.logger.info(f"-- node: {loopback0['ipv4']['address']}")
+        self.node = loopback0["ipv4"]["address"]
 
     def translate_community_set(self) -> None:
         self.logger.info("- community-set")
@@ -257,6 +272,9 @@ class XRTranslator:
             elif rule["if"] == "if":
 
                 for inner_rule1 in rule["rules"]:
+                    if "if" in inner_rule1.keys():
+                        self.logger.info(f"skipping nested 'if': {inner_rule1}")
+                        continue
                     inner_action = self.translate_rule(inner_rule1)
                     if inner_action:
                         statement.actions.append(inner_action)
@@ -290,10 +308,12 @@ class XRTranslator:
                             self.logger.info(f"{match} could not be translated.")
 
             elif rule["if"] == "elseif":
+                self.logger.info(f"skipping 'elseif': {rule}")
                 # TODO: elseifの実装
                 pass
 
             elif rule["if"] == "else":
+                self.logger.info(f"skipping 'else': {rule}")
                 # TODO: elseの実装
                 pass
 
