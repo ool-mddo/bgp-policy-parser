@@ -45,7 +45,7 @@ interfaces { {{ _start_ }}
 </group>
 
 <group>
-policy-options {
+policy-options { {{ _start_ }}
     
     <group name="prefix-sets*">
     prefix-list {{ name | _start_ }} {
@@ -111,5 +111,5 @@ policy-options {
         </group>
     } {{ _end_ }}
     </group>
-}
+} {{ _end_ }}
 </group>

@@ -28,14 +28,14 @@ begin_if = "(if|else|elseif)"
 end_if = "(endif|else|elseif)"
 pass_drop_done = "(pass|drop|done)"
 set_delete = "(set|delete)"
-not_if = "^(pass|drop|done|set|delete|apply).*"
+not_if = "^(pass|drop|done|set|delte|apply).*"
 apply = "apply.*"
 </vars>
 
 <group name="interfaces*">
 interface {{ name | _start_ }}
  <group name="ipv4">
- ipv4 address {{ address }} {{ mask }}
+ ipv4 address {{ address | _exact_ }} {{ mask }}
  </group>
 ! {{ _end_ }}
 </group>
@@ -77,7 +77,7 @@ community-set {{ name | _start_ }}
   {{ community }}
   </group>
   <group name="communities*">
-  ios-regex '{{ pattern }}'
+  ios-regex '{{ community }}'
   </group>
 end-set {{ _end_ }}
 </group>
@@ -131,7 +131,7 @@ route-policy {{ name | _start_ }}
     </group>
   {{ fi | _exact_space_ | re(end_if) | _end_ }}
 ## else
-  <group name="rules*">
+  <group>
   {{ if | _exact_space_ | re("else") | _start_ }} 
     <group name="rules*">
     {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
@@ -144,6 +144,7 @@ route-policy {{ name | _start_ }}
     </group>
   {{ fi | _exact_space_ | re("endif") | _end_ }}
   </group>
+  </group>
 
   <group name="rules*">
   {{ action | _exact_space_ | re(set_delete) }} {{ attr }} {{ value | _line_ }}
@@ -154,7 +155,7 @@ route-policy {{ name | _start_ }}
   <group name="rules*">
   {{ action | _exact_space_ | re(pass_drop_done) }}
   </group>
-  
+
 end-policy
 ! {{ _end_ }}
 </group>

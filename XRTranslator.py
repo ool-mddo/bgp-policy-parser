@@ -1,6 +1,6 @@
 import json, sys, yaml
 from sys import stderr, stdout
-from logging import getLogger, StreamHandler, Formatter, INFO
+from logging import getLogger, StreamHandler, Formatter, INFO, FileHandler, DEBUG
 from dataclasses import dataclass, field, asdict, is_dataclass
 from typing import Union
 from enum import Enum
@@ -35,25 +35,29 @@ class PolicyModel:
     def set_default_reject(self):
         self.default = { "actions": [{ "target": "reject" }]}
 
-class XRTranslator():
-    
-    def __init__(self, ttp_parsed_data: dict, name: str):
-        self.node = ""
-        self.community_set = []
-        self.aspath_set = []
-        self.prefix_set = []
-        self.policies: list[PolicyModel] = []
-        self.ttp_parsed_data = ttp_parsed_data[0][0]
-
-        self.logger = getLogger(f"xr.{name}")
-        self.logger.setLevel(INFO)
-        formatter = Formatter('[{asctime}:{levelname}] {message}', style='{')
+class XRTranslator:
+    def __init__(self):
+        self.logger = getLogger("xr")
+        self.logger.setLevel(DEBUG)
+        formatter = Formatter("[{asctime} @{funcName}-{lineno}] {message}", style="{")
 
         sh = StreamHandler(stdout)
         sh.setFormatter(formatter)
         sh.setLevel(INFO)
         self.logger.addHandler(sh)
         self.logger.propagate = False
+
+        fh = FileHandler('parser.log')
+        fh.setFormatter(formatter)
+        fh.setLevel(DEBUG)
+        self.logger.addHandler(fh)
+
+    def load_ttp_parsed_config(self, ttp_parsed_data: dict):
+        self.node = ""
+        self.community_set = []
+        self.aspath_set = []
+        self.prefix_set = []
+        self.policies: list[PolicyModel] = []
 
         self.ttp_parsed_data = ttp_parsed_data[0][0]
 
@@ -117,11 +121,21 @@ class XRTranslator():
         self.policies[target_index] = policy
 
     def translate_node(self) -> None:
-        self.logger.info("- node")
-        for item in self.ttp_parsed_data["interfaces"]:
-            if item["name"] == "Loopback0":
-                self.logger.info(f"-- node: {item['ipv4']['address']}")
-                self.node = item["ipv4"]["address"]
+        _loopback0 = [interface for interface in self.ttp_parsed_data['interfaces']
+                     if interface['name'] == 'Loopback0']
+
+        if not _loopback0:
+            self.logger.info("Loopback0 not found")
+            return
+        
+        loopback0: dict = _loopback0[0]
+        
+        if "ipv4" not in loopback0.keys():
+            self.logger.info(f"ipv4 address not found.")
+            return 
+
+        self.logger.info(f"-- node: {loopback0['ipv4']['address']}")
+        self.node = loopback0["ipv4"]["address"]
 
     def translate_community_set(self) -> None:
         self.logger.info("- community-set")
@@ -163,6 +177,11 @@ class XRTranslator():
             for item in self.ttp_parsed_data["prefix-sets"]:
                 self.logger.info(f"-- prefix-set: {item}")
                 prefixes = []
+
+                if "prefixes" not in item:
+                    self.logger.info(f"prefixes not found in {item}")
+                    continue
+
                 for prefix_obj in item["prefixes"]:
 
                     prefix_length = prefix_obj["prefix"].split("/")[-1]
@@ -173,8 +192,9 @@ class XRTranslator():
                         conditions = prefix_obj["condition"].split()
                         if len(conditions) == 2:
                             if "ge" in conditions:
-                                match_type = "orlonger"
+                                match_type = "prefix-length-range"
                                 length["min"] = conditions[1]
+                                length["max"] = "32"
                             elif "le" in conditions:
                                 match_type = "upto"
                                 length["max"] = conditions[1]
@@ -199,44 +219,39 @@ class XRTranslator():
 
     def translate_rule(self, rule: dict) -> dict:    
         self.logger.info(f"translate rule: {rule}")
-        action = None
-        if rule['action'] == 'set':
-            attr = rule['attr']
-            if attr == 'med':
-                action = { "metric": rule['value'] } 
-            elif attr == 'local-preference':
-                action = { "local-preference": rule['value']}
-            elif attr == 'community':
-                community_name = rule['value'].split()[0]
-                if 'additive' in rule['value']:
-                    action = { "community": { "action": "add", "name": community_name }}
+        if rule["action"] == "set":
+            attr = rule["attr"]
+            if attr == "med":
+                action = {"metric": rule["value"]}
+            elif attr == "local-preference":
+                action = {"local-preference": rule["value"]}
+            elif attr == "community":
+                community_name = rule["value"].split()[0]
+                if "additive" in rule["value"]:
+                    action = {"community": {"action": "add", "name": community_name}}
                 else:
-                    action = { "community": { "action": "set", "name": community_name }}
-            elif attr == 'next-hop':
-                action = { "next-hop": rule['value'] }
+                    action = {"community": {"action": "set", "name": community_name}}
+            elif attr == "next-hop":
+                action = {"next-hop": rule["value"]}
 
-        elif rule['action'] == 'delete':
-            attr = rule['attr']
-            if attr == 'community':
+        elif rule["action"] == "delete":
+            attr = rule["attr"]
+            if attr == "community":
                 # TODO: not in ~ への対応
-                community_name = rule['value'].split()[-1]
-                action = { "community": { "action": "delete", "name": community_name } }
-            
-        elif rule['action'] == 'apply':
-            action = { 'apply': rule['value'] }
-        
-        elif rule['action'] in ['pass', 'drop', 'done']:
-            target_maps = { 
-                'pass': 'next-term', 'drop': 'reject', 'done': 'accept'
-            }
-            action = { 'target': target_maps[rule['action']]  }
+                community_name = rule["value"].split()[-1]
+                action = {"community": {"action": "delete", "name": community_name}}
 
-        if action:
-            return action
-        else:
-            return { }
+        elif rule["action"] == "apply":
+            action = {"apply": rule["value"]}
 
-    def convert_prefix_list_into_route_filter(self,prefix_list_name: str) -> list:
+        elif rule["action"] in ["pass", "drop", "done"]:
+            target_maps = {"pass": "next term", "drop": "reject", "done": "accept"}
+            action = {"target": target_maps[rule["action"]]}
+
+        return action
+
+
+    def convert_prefix_list_into_route_filter(self, prefix_list_name: str) -> list:
         """Convert prefix-list into route-filter
         Args:
             prefix_list_name (str): prefix_list name of Conversion target
@@ -271,9 +286,7 @@ class XRTranslator():
         elif match.split()[0] == "community":
             _, op, community = match.split()
             if op == "matches-any":
-                condition.append({
-                    "community": community
-                })
+                condition.append({"community": [community]})
                 return condition
             elif op == "matches-every":
                 self.logger.info("matches-every is not implemented")
@@ -393,18 +406,22 @@ class XRTranslator():
                         inner_action = self.translate_rule(inner_rule)
                         if inner_action:
                             policy.statements.append(
-                                Statement(name=policy_basename,conditions=base_conditions,actions=[inner_action])
+                                Statement(name=f"{policy_basename}-{count}",conditions=base_conditions,actions=[inner_action])
                             ) 
                         else:
                             self.logger.info(f"{inner_rule} could not be translated.")
-                    count += 10
+                        count += 10
 
                 # ---------- then句の組み立て終わり(if) ---------- 
 
             elif rule["if"] == "elseif":
+                self.logger.info(f"skipping 'elseif': {rule}")
+                # TODO: elseifの実装
                 pass
             
             elif rule["if"] == "else":
+                self.logger.info(f"skipping 'else': {rule}")
+                # TODO: elseの実装
                 pass
 
         if parent_conditional_policy:
