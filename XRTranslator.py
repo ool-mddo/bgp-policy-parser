@@ -336,8 +336,6 @@ class XRTranslator:
                     community_condition.append(self.translate_match(match)[0])
                     self.logger.info(self.translate_match(match)[0])
             if len(community_condition) > 1:
-                self.logger.info("DEBUG: ")
-                self.logger.info(community_condition)
                 self.create_community_set_in_and_condition(community_condition)
 
         not_match_statement = Statement(name="10")
