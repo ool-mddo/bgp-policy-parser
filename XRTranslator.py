@@ -303,6 +303,17 @@ class XRTranslator:
                     self.logger.info(f"{match} could not be translated.")
                     statement.conditions.extend([{ "_message": {"TRANSLATION_FAILED": match }}])
             statement.actions.append({ "target": "accept" })
+            if if_condition["op"] == "and":
+                community_condition = []
+                for match in if_condition["matches"]:
+                    if "community" in match:
+                        community_condition.append(self.translate_match(match)[0])
+                        self.logger.info(self.translate_match(match)[0])
+                if len(community_condition) > 1:
+                    new_community_set_name = self.create_community_set_in_and_condition(community_condition)
+                    statement.conditions = [item for item in statement.conditions if "community" not in item]
+                    statement.conditions.append({"community": [new_community_set_name]})
+                    self.logger.info(f"update condition community: {new_community_set_name}")            
             if_policy = PolicyModel(
                 name=f"{PolicyPrefix.MATCH.value}{basename}",
                 statements=[statement],
@@ -329,13 +340,6 @@ class XRTranslator:
             if_policy.set_default_reject()
 
 
-        # if if_condition["op"] == "and":
-        #     community_condition = []
-        #     for match in if_condition["matches"]:
-        #         if "community" in match:
-        #             community_condition.append(self.translate_match(match)[0])
-        #     if len(community_condition) > 1:
-        #         self.create_community_set_in_and_condition(community_condition)
 
         not_match_statement = Statement(name="10")
         not_match_statement.conditions.append({ "policy": f"{PolicyPrefix.IF_CONDITION.value}{basename}" })
@@ -354,23 +358,16 @@ class XRTranslator:
         new_community_set_communities = []        
         for item in communities:
             for i in self.community_set:
-                if i["name"] == item["community"]:
-                    self.logger.info(f"DEBUG: {item['community']} is found")
-                    new_community_set_name.append(item["community"])
-                    new_community_set_communities.extend(i["communities"])
-                
-        self.logger.info("DEBUG: create-community-set")
-        self.logger.info(new_community_set_name)
-        self.logger.info(new_community_set_communities)
-        self.logger.info("DEBUG: ---end")
+                if i["name"] == item["community"][0]:
+                    new_community_set_name.append(item["community"][0])
+                    new_community_set_communities.extend(i["communities"])                
         self.community_set.append(
                 {
                 "name": "-and-".join(new_community_set_name),
                 "communities": new_community_set_communities
-                }
-            )
-        self.logger.info(self.community_set)
-        pass
+                })
+        self.logger.info(f"create new_community-set: {self.community_set[-1]['name']}")
+        return self.community_set[-1]['name'] 
 
     def translate_policies(self):
         for policy in self.ttp_parsed_data["policies"]:
