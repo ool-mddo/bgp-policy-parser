@@ -83,7 +83,7 @@ end-set {{ _end_ }}
 </group>
 
 
-<group name="policies">
+<group name="policies*">
 route-policy {{ name | _start_ }}
 
   <group name="rules*">
