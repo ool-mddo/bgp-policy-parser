@@ -241,9 +241,14 @@ class XRTranslator:
 
         # as-path in as-path-set
         elif match.split()[0] == "as-path":
-            as_path_group_item = {"as-path-group": match.split()[-1]}
-            condition.append(as_path_group_item)
-            return condition
+            if "length" in match:
+              #TBD
+              #condition.append({"protocol": "bgp"})
+              return condition
+            else:
+              as_path_group_item = {"as-path-group": match.split()[-1]}
+              condition.append(as_path_group_item)
+              return condition
 
         # community match-any community-set
         elif match.split()[0] == "community":
