@@ -1,4 +1,3 @@
-import os
 import logging
 from flask import Flask, jsonify
 from flask.logging import create_logger
@@ -10,23 +9,23 @@ app = Flask(__name__)
 app_logger = create_logger(app)
 logging.basicConfig(level=logging.WARNING)
 
-MODEL_CONDUCTOR_HOST = os.environ.get("MODEL_CONDUCTOR_HOST", "localhost")
-CONFIGS_DIR = os.environ.get("MDDO_CONFIGS_DIR", "./configs")
-QUERIES_DIR = os.environ.get("MDDO_QUERIES_DIR", "./queries")
 
-
-@app.route("/bgp_policy/<network>/<snapshot>", methods=["POST"])
-def post_bgp_policies(network: str, snapshot: str):
+@app.route("/bgp_policy/<network>/<snapshot>/parsed_result", methods=["POST"])
+def post_parsed_result(network: str, snapshot: str):
+    # collect configs
     node_props = cc.read_node_props(network, snapshot)
     cc.copy_configs(network, snapshot, node_props)
-    parse_bp.parse_juniper_bgp_policy()
-    parse_bp.parse_cisco_ios_xr_bgp_policy()
+    # parse bgp policy
+    parse_bp.parse_juniper_bgp_policy(network, snapshot)
+    parse_bp.parse_cisco_ios_xr_bgp_policy(network, snapshot)
+    # response
     return jsonify({})
 
 
-@app.route("/bgp_policy/<network>/<snapshot>", methods=["POST"])
-def post_bgp_policies():
-    pass
+@app.route("/bgp_policy/<network>/<snapshot>/topology", methods=["POST"])
+def post_topology_data(network: str, snapshot: str):
+    response = post_bp.post_bgp_policy(network, snapshot)
+    return jsonify({"status": response.status_code})
 
 
 if __name__ == "__main__":
