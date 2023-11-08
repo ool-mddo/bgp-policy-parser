@@ -1,6 +1,6 @@
 import json, sys, copy
 from sys import stderr, stdout
-from logging import getLogger, StreamHandler, Formatter, INFO
+from logging import getLogger, StreamHandler, Formatter, INFO, FileHandler, DEBUG
 from dataclasses import dataclass, field, asdict, is_dataclass
 from typing import Union
 
@@ -27,22 +27,27 @@ class PolicyModel:
 
 
 class XRTranslator:
-    def __init__(self, ttp_parsed_data: dict):
-        self.node = ""
-        self.community_set = []
-        self.aspath_set = []
-        self.prefix_set = []
-        self.policies: list[PolicyModel] = []
-        self.ttp_parsed_data = ttp_parsed_data[0][0]
-
+    def __init__(self):
         self.logger = getLogger("xr")
-        self.logger.setLevel(INFO)
-        formatter = Formatter("[{asctime}:{levelname}] {message}", style="{")
+        self.logger.setLevel(DEBUG)
+        formatter = Formatter("[{asctime} @{funcName}-{lineno}] {message}", style="{")
 
         sh = StreamHandler(stdout)
         sh.setFormatter(formatter)
         sh.setLevel(INFO)
         self.logger.addHandler(sh)
+
+        fh = FileHandler('parser.log')
+        fh.setFormatter(formatter)
+        fh.setLevel(DEBUG)
+        self.logger.addHandler(fh)
+
+    def load_ttp_parsed_config(self, ttp_parsed_data: dict):
+        self.node = ""
+        self.community_set = []
+        self.aspath_set = []
+        self.prefix_set = []
+        self.policies: list[PolicyModel] = []
 
         self.ttp_parsed_data = ttp_parsed_data[0][0]
 
@@ -67,11 +72,21 @@ class XRTranslator:
         self.policies[target_index] = policy
 
     def translate_node(self) -> None:
-        self.logger.info("- node")
-        for item in self.ttp_parsed_data["interfaces"]:
-            if item["name"] == "Loopback0":
-                self.logger.info(f"-- node: {item['ipv4']['address']}")
-                self.node = item["ipv4"]["address"]
+        _loopback0 = [interface for interface in self.ttp_parsed_data['interfaces']
+                     if interface['name'] == 'Loopback0']
+
+        if not _loopback0:
+            self.logger.info("Loopback0 not found")
+            return
+        
+        loopback0: dict = _loopback0[0]
+        
+        if "ipv4" not in loopback0.keys():
+            self.logger.info(f"ipv4 address not found.")
+            return 
+
+        self.logger.info(f"-- node: {loopback0['ipv4']['address']}")
+        self.node = loopback0["ipv4"]["address"]
 
     def translate_community_set(self) -> None:
         self.logger.info("- community-set")
@@ -85,34 +100,39 @@ class XRTranslator:
                 self.community_set.append(community_data)
 
     def translate_aspath_set(self) -> None:
+        if "as-path-sets" not in self.ttp_parsed_data.keys():
+            self.logger.info("no as-path-set found")
+            return
         self.logger.info("- as-path-set")
-        if "as-path-sets" in self.ttp_parsed_data.keys():
-            for aspath_obj in self.ttp_parsed_data["as-path-sets"]:
-                self.logger.info(f"-- as-path-set: {aspath_obj}")
-                aspath_data = {
-                    "group-name": aspath_obj["name"],
-                    "as-path": {"name": aspath_obj["name"]},
-                }
+        for aspath_obj in self.ttp_parsed_data["as-path-sets"]:
+            self.logger.info(f"-- as-path-set: {aspath_obj}")
 
-                if "conditions" in aspath_obj.keys():
+            aspath_data = {
+                "group-name": aspath_obj["name"],
+                "as-path": {"name": aspath_obj["name"]},
+            }
+            
+            if "conditions" in aspath_obj.keys():
 
-                    for aspath_condition in aspath_obj["conditions"]:
+                for aspath_condition in aspath_obj["conditions"]:
 
-                        if "pattern" in aspath_condition.keys():
-                            aspath_data["as-path"]["pattern"] = aspath_condition[
-                                "pattern"
-                            ]
+                    if "pattern" in aspath_condition.keys():
+                        aspath_data["as-path"]["pattern"] = aspath_condition["pattern"]
 
-                        if "length" in aspath_condition.keys():
-                            if aspath_condition["condition"] == "le":
-                                aspath_data["as-path"]["length"] = {
-                                    "max": aspath_condition["length"]
-                                }
-                            elif aspath_condition["condition"] == "ge":
-                                aspath_data["as-path"]["length"] = {
-                                    "min": aspath_condition["length"]
-                                }
-                self.aspath_set.append(aspath_data)
+                    if "length" in aspath_condition.keys():
+                        if aspath_condition["condition"] == "le":
+                            aspath_data["as-path"]["length"] = {
+                                "max": aspath_condition["length"]
+                            }
+                        elif aspath_condition["condition"] == "ge":
+                            aspath_data["as-path"]["length"] = {
+                                "min": aspath_condition["length"]
+                            }
+
+            else: # 空のas-path-set
+                aspath_data["as-path"]["pattern"] = "'.*'"
+
+            self.aspath_set.append(aspath_data)
 
     def translate_prefix_set(self) -> None:
         self.logger.info("- prefix-set")
@@ -120,6 +140,11 @@ class XRTranslator:
             for item in self.ttp_parsed_data["prefix-sets"]:
                 self.logger.info(f"-- prefix-set: {item}")
                 prefixes = []
+
+                if "prefixes" not in item:
+                    self.logger.info(f"prefixes not found in {item}")
+                    continue
+
                 for prefix_obj in item["prefixes"]:
 
                     prefix_length = prefix_obj["prefix"].split("/")[-1]
@@ -221,9 +246,24 @@ class XRTranslator:
 
         # as-path in as-path-set
         elif match.split()[0] == "as-path":
-            as_path_group_item = {"as-path-group": match.split()[-1]}
-            condition.append(as_path_group_item)
-            return condition
+            if "length" in match:
+                name = match.replace(" ", "_")
+                op = "max" if "le" in match.split() else "min"
+                self.aspath_set.append({    
+                    "group-name": f"_generated_{name}",
+                    "as-path": {
+                        "name": f"_generated_{name}",
+                        "length": {
+                            op: match.split()[-1]
+                        }
+                    }
+                })
+                condition.append({ "as-path-group": f"_generated_{name}"})
+                return condition
+            else:
+              as_path_group_item = {"as-path-group": match.split()[-1]}
+              condition.append(as_path_group_item)
+              return condition
 
         # community match-any community-set
         elif match.split()[0] == "community":
@@ -257,6 +297,9 @@ class XRTranslator:
             elif rule["if"] == "if":
 
                 for inner_rule1 in rule["rules"]:
+                    if "if" in inner_rule1.keys():
+                        self.logger.info(f"skipping nested 'if': {inner_rule1}")
+                        continue
                     inner_action = self.translate_rule(inner_rule1)
                     if inner_action:
                         statement.actions.append(inner_action)
@@ -290,10 +333,12 @@ class XRTranslator:
                             self.logger.info(f"{match} could not be translated.")
 
             elif rule["if"] == "elseif":
+                self.logger.info(f"skipping 'elseif': {rule}")
                 # TODO: elseifの実装
                 pass
 
             elif rule["if"] == "else":
+                self.logger.info(f"skipping 'else': {rule}")
                 # TODO: elseの実装
                 pass
 

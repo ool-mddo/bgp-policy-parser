@@ -18,6 +18,9 @@ def strip_whitespace(data):
 def split_by_line(data):
     return data.split('\n')
 
+def strip_comma(data):
+    return data.rstrip(',')
+
 def to_dict(data):
     key, *value = data.split()
     return {"value": ''.join(value)}
@@ -35,7 +38,7 @@ apply = "apply.*"
 <group name="interfaces*">
 interface {{ name | _start_ }}
  <group name="ipv4">
- ipv4 address {{ address }} {{ mask }}
+ ipv4 address {{ address | _exact_ }} {{ mask }}
  </group>
 ! {{ _end_ }}
 </group>
@@ -43,16 +46,10 @@ interface {{ name | _start_ }}
 <group name="prefix-sets">
 prefix-set {{ name | _start_ }}
   <group name="prefixes*">
-  {{ prefix }} {{ condition | _line_ }},
+  {{ prefix }} {{ condition | _line_ | macro(strip_comma)}}
   </group>
   <group name="prefixes*">
-  {{ prefix }} {{ condition | _line_ }}
-  </group>
-  <group name="prefixes*">
-  {{ prefix }},
-  </group>
-  <group name="prefixes*">
-  {{ prefix }}
+  {{ prefix | macro(strip_comma) }}
   </group>
 end-set {{ _end_ }}
 </group>
@@ -71,13 +68,10 @@ end-set {{ _end_ }}
 <group name="community-sets">
 community-set {{ name | _start_ }}
   <group name="communities*">
-  {{ community }},
+  {{ community | macro(strip_comma) }}
   </group>
   <group name="communities*">
-  {{ community }}
-  </group>
-  <group name="communities*">
-  ios-regex '{{ pattern }}'
+  ios-regex '{{ community }}'
   </group>
 end-set {{ _end_ }}
 </group>

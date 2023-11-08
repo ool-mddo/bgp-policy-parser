@@ -4,13 +4,9 @@ from ttp import ttp
 import os
 import json
 import glob
+from logging import getLogger, Formatter, DEBUG, INFO, FileHandler, StreamHandler
 from typing import Dict, List
 from XRTranslator import XRTranslator, PMEncoder
-
-
-# configs/junos > * 引っ張る
-# for で回してparse
-# result につっこむ xr > junos
 
 
 # constants
@@ -19,6 +15,20 @@ TTP_CONFIGS_DIR = os.environ.get("MDDO_TTP_CONFIGS_DIR", "./configs")
 TTP_OUTPUTS_DIR = os.environ.get("MDDO_TTP_OUTPUTS_DIR", "./ttp_output")
 BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_output")
 
+
+logger = getLogger('main')
+logger.setLevel(DEBUG)
+formatter = Formatter("[{asctime} @{funcName}-{lineno}] {message}", style="{")
+
+fh = FileHandler('parser.log')
+fh.setFormatter(formatter)
+fh.setLevel(DEBUG)
+logger.addHandler(fh)
+
+sh = StreamHandler(sys.stdout)
+sh.setFormatter(formatter)
+sh.setLevel(INFO)
+logger.addHandler(sh)
 
 def ttp_parse(text: str, os_type: str) -> List:
     """Parse a config file with TTP according to its OS-type
@@ -52,7 +62,7 @@ def save_parsed_result(
     save_dir = os.path.join(TTP_OUTPUTS_DIR, network, snapshot, os_type)
     os.makedirs(save_dir, exist_ok=True)
     save_file = os.path.join(save_dir, f"{file_name_wo_ext}.json")
-    print(f"parse result saved: {save_file}")
+    logger.info(f"parse result saved: {save_file}")
     with open(save_file, "w") as f:
         f.write(json.dumps(parser_result, indent=2))
 
@@ -74,7 +84,7 @@ def save_policy_model_output(
     save_dir = os.path.join(BGP_POLICIES_DIR, network, snapshot)
     os.makedirs(save_dir, exist_ok=True)
     save_file = os.path.join(save_dir, file_name_wo_ext)
-    print(f"bgp policy saved: {save_file}")
+    logger.info(f"bgp policy saved: {save_file}")
     with open(save_file, "w") as f:
         f.write(json.dumps(model_output, indent=2, cls=PMEncoder))
 
@@ -90,9 +100,8 @@ def parse_files(network: str, snapshot: str, os_type: str) -> None:
     """
     config_dir = os.path.join(TTP_CONFIGS_DIR, network, snapshot, os_type)
     if not os.path.isdir(config_dir):
-        print(
-            f"Error: config dir:{config_dir} for os_type:{os_type} is not found",
-            file=sys.stderr,
+        logger.info(
+            f"Error: config dir:{config_dir} for os_type:{os_type} is not found"
         )
         sys.exit(1)
 
@@ -118,12 +127,12 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
     junos_ttp_outputs = glob.glob(os.path.join(junos_ttp_outputs_dir, "*"))
 
     for junos_output_file in junos_ttp_outputs:
-        print(f"- target: {junos_output_file}")
+        logger.info(f"- target: {junos_output_file}")
 
         with open(junos_output_file, "r") as f:
             data = json.load(f)
             if any(data[0][0]) is False:
-                print("# parse result is empty (it seems non-bgp-speaker)")
+                logger.info("# parse result is empty (it seems non-bgp-speaker)")
                 continue
             result = data[0][0][0]
 
@@ -139,11 +148,15 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
         if "prefix-sets" in result.keys():
             for item in result["prefix-sets"]:
                 template["prefix-set"].append(item)
+        else:
+            logger.info(f"prefix-set not found in {junos_output_file}")
 
         # as-path-set
         if "aspath-sets" in result.keys():
             for item in result["aspath-sets"]:
                 template["as-path-set"].append(item)
+        else:
+            logger.info(f"as-path-set not found in {junos_output_file}")
 
         # community-set
         if "community-sets" in result.keys():
@@ -153,12 +166,27 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
                     "communities": [ {"community": member} for member in item["members"].split() ]
                 }
                 template["community-set"].append(data)
+        else:
+            logger.info(f"community-set not found in {junos_output_file}")
 
         # policies
+        if "policies" not in result:
+            logger.info(f"policy not found in {junos_output_file}")
+            continue
+
         for item in result["policies"]:
             statements = list()
-            for name, statement in item["statements"].items():
 
+            if "statements" not in item.keys():
+                logger.info(f"statements not found in {item['name']}")
+                print (str(item))
+                if "default" in item.keys():
+                  default = {"actions": item["default"]["actions"]}
+                  data = {"name": item["name"], "statements": "none" , "default": default}
+                  template["policies"].append(data)
+                continue
+
+            for name, statement in item["statements"].items():
                 conditions = []
                 actions = []
                 for rule in statement:
@@ -167,13 +195,13 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
                     elif "conditions" in rule:
                         conditions.extend(rule["conditions"])
                     else:
-                        print(f"# NO RULE MATCHED: {rule}")
+                        logger.debug(f"# NO RULE MATCHED: {rule}")
 
                 for i, condition in enumerate(conditions):
-                    print("  - condition : ", condition)
+                    logger.debug(f"  - condition : {condition}")
                     if "route-filter" in condition.keys():
                         prefix, *match_type_elem = condition["route-filter"].split()
-                        print("    - match_type_elem length: ", len(match_type_elem))
+                        logger.debug(f"    - match_type_elem length: {len(match_type_elem)}")
                         # exact
                         if len(match_type_elem) == 1:
                             # exact
@@ -219,20 +247,25 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
                         conditions[i] = {"community": communities}
 
                 for i, action in enumerate(actions):
+                    tmpactions = {}
                     if "as-path-prepend" in action.keys():
+                        #logger.debug(f"as-path-prepend:::: " + str(action))
                         asn = action["as-path-prepend"].split()
 
-                        conditions[i] = {"as-path-prepend": {"asn": asn}}
+                        tmpactions.update({"as-path-prepend": {"asn": asn}})
+                        #conditions[i] = {"as-path-prepend": {"asn": asn}}
 
                     if "community" in action.keys():
+                        #logger.debug(f"community:::: " + str(action))
                         community_action, community_name = action["community"].split()
 
-                        actions[i] = {
+                        tmpactions.update ({
                             "community": {
                                 "action": community_action,
                                 "name": community_name,
                             }
-                        }
+                        })
+                    actions[i].update(tmpactions)
 
                 statement_data = {
                     "name": name,
@@ -268,10 +301,12 @@ def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
     )
     xr_ttp_outputs = glob.glob(os.path.join(xr_ttp_outputs_dir, "*"))
 
+    xr_translator = XRTranslator()
     for xr_output_file in xr_ttp_outputs:
         with open(xr_output_file) as f:
             ttp_parsed_config = json.load(f)
-        xr_translator = XRTranslator(ttp_parsed_config)
+        logger.info(f"loading {xr_output_file}")
+        xr_translator.load_ttp_parsed_config(ttp_parsed_config)
         xr_translator.translate_policies()
         policy_model_output = {
             "node": xr_translator.node,
