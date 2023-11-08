@@ -242,9 +242,19 @@ class XRTranslator:
         # as-path in as-path-set
         elif match.split()[0] == "as-path":
             if "length" in match:
-              #TBD
-              #condition.append({"protocol": "bgp"})
-              return condition
+                name = match.replace(" ", "_")
+                op = "max" if "le" in match.split() else "min"
+                self.aspath_set.append({    
+                    "group-name": f"_generated_{name}",
+                    "as-path": {
+                        "name": f"_generated_{name}",
+                        "length": {
+                            op: match.split()[-1]
+                        }
+                    }
+                })
+                condition.append({ "as-path-group": f"_generated_{name}"})
+                return condition
             else:
               as_path_group_item = {"as-path-group": match.split()[-1]}
               condition.append(as_path_group_item)
