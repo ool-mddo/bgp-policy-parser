@@ -458,11 +458,12 @@ class XRTranslator:
 
                 # ---------- then句の組み立て開始(if) ----------
                 self.logger.info(rule)
+                child_count = 10
                 for inner_rule in rule["rules"]:
                     if "if" in inner_rule.keys():
                         self.logger.info(f"translate nested if: {inner_rule}")
                         _dummy_ttp_policy = { 
-                            "name": f"{policy_basename}-{count}",
+                            "name": f"{policy_basename}-{child_count}",
                             "rules": [inner_rule]
                         }
                         self.logger.info(f"dummy policy: {_dummy_ttp_policy}")
@@ -477,13 +478,13 @@ class XRTranslator:
                         if inner_action:
                             policy.statements.append(
                                 Statement(
-                                    name=f"{policy_basename}-{count}",
+                                    name=f"{policy_basename}-{child_count}",
                                     conditions=base_conditions,actions=[inner_action]
                                 )
                             ) 
                         else:
                             self.logger.info(f"{inner_rule} could not be translated.")
-                    count += 10
+                    child_count += 10
 
                 # ---------- then句の組み立て終わり(if) ---------- 
 
