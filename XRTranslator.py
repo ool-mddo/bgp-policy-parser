@@ -1,4 +1,4 @@
-import json, sys, yaml
+import json, sys
 from sys import stderr, stdout
 from logging import getLogger, StreamHandler, Formatter, INFO, FileHandler, DEBUG
 from dataclasses import dataclass, field, asdict, is_dataclass
