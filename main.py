@@ -179,6 +179,11 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
 
             if "statements" not in item.keys():
                 logger.info(f"statements not found in {item['name']}")
+                print (str(item))
+                if "default" in item.keys():
+                  default = {"actions": item["default"]["actions"]}
+                  data = {"name": item["name"], "statements": "none" , "default": default}
+                  template["policies"].append(data)
                 continue
 
             for name, statement in item["statements"].items():
@@ -242,20 +247,25 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
                         conditions[i] = {"community": communities}
 
                 for i, action in enumerate(actions):
+                    tmpactions = {}
                     if "as-path-prepend" in action.keys():
+                        #logger.debug(f"as-path-prepend:::: " + str(action))
                         asn = action["as-path-prepend"].split()
 
-                        conditions[i] = {"as-path-prepend": {"asn": asn}}
+                        tmpactions.update({"as-path-prepend": {"asn": asn}})
+                        #conditions[i] = {"as-path-prepend": {"asn": asn}}
 
                     if "community" in action.keys():
+                        #logger.debug(f"community:::: " + str(action))
                         community_action, community_name = action["community"].split()
 
-                        actions[i] = {
+                        tmpactions.update ({
                             "community": {
                                 "action": community_action,
                                 "name": community_name,
                             }
-                        }
+                        })
+                    actions[i].update(tmpactions)
 
                 statement_data = {
                     "name": name,

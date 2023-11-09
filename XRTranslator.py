@@ -144,32 +144,41 @@ class XRTranslator:
                 self.logger.info(f"-- community: {community_obj}")
                 community_data = {"name": community_obj["name"], "communities": community_obj["communities"]}
                 self.community_set.append(community_data)
-    
-    def translate_aspath_set(self) -> None: 
+
+    def translate_aspath_set(self) -> None:
+        if "as-path-sets" not in self.ttp_parsed_data.keys():
+            self.logger.info("no as-path-set found")
+            return
         self.logger.info("- as-path-set")
-        if "as-path-sets" in self.ttp_parsed_data.keys():
-            for aspath_obj in self.ttp_parsed_data["as-path-sets"]:
-                self.logger.info(f"-- as-path-set: {aspath_obj}")
-                aspath_data = {
-                    "group-name": aspath_obj["name"],
-                    "as-path": {
-                        "name": aspath_obj["name"]
-                    }
-                }
+        for aspath_obj in self.ttp_parsed_data["as-path-sets"]:
+            self.logger.info(f"-- as-path-set: {aspath_obj}")
 
-                if "conditions" in aspath_obj.keys():
+            aspath_data = {
+                "group-name": aspath_obj["name"],
+                "as-path": {"name": aspath_obj["name"]},
+            }
+            
+            if "conditions" in aspath_obj.keys():
 
-                    for aspath_condition in aspath_obj["conditions"]:
+                for aspath_condition in aspath_obj["conditions"]:
 
-                        if "pattern" in aspath_condition.keys():
-                            aspath_data["as-path"]["pattern"] = aspath_condition["pattern"]
+                    if "pattern" in aspath_condition.keys():
+                        aspath_data["as-path"]["pattern"] = aspath_condition["pattern"]
 
-                        if "length" in aspath_condition.keys():
-                            if aspath_condition["condition"] == "le":
-                                aspath_data["as-path"]["length"] = { "max": aspath_condition["length"]}
-                            elif aspath_condition["condition"] == "ge":
-                                aspath_data["as-path"]["length"] = { "min": aspath_condition["length"]}
-                self.aspath_set.append(aspath_data)
+                    if "length" in aspath_condition.keys():
+                        if aspath_condition["condition"] == "le":
+                            aspath_data["as-path"]["length"] = {
+                                "max": aspath_condition["length"]
+                            }
+                        elif aspath_condition["condition"] == "ge":
+                            aspath_data["as-path"]["length"] = {
+                                "min": aspath_condition["length"]
+                            }
+
+            else: # 空のas-path-set
+                aspath_data["as-path"]["pattern"] = "'.*'"
+
+            self.aspath_set.append(aspath_data)
 
     def translate_prefix_set(self) -> None:
         self.logger.info("- prefix-set")
@@ -278,10 +287,25 @@ class XRTranslator:
         
         # as-path in as-path-set
         elif match.split()[0] == "as-path":
-            as_path_group_item = {"as-path-group": match.split()[-1]}
-            condition.append(as_path_group_item)
-            return condition
-        
+            if "length" in match:
+                name = match.replace(" ", "_")
+                op = "max" if "le" in match.split() else "min"
+                self.aspath_set.append({    
+                    "group-name": f"_generated_{name}",
+                    "as-path": {
+                        "name": f"_generated_{name}",
+                        "length": {
+                            op: match.split()[-1]
+                        }
+                    }
+                })
+                condition.append({ "as-path-group": f"_generated_{name}"})
+                return condition
+            else:
+              as_path_group_item = {"as-path-group": match.split()[-1]}
+              condition.append(as_path_group_item)
+              return condition
+
         # community match-any community-set
         elif match.split()[0] == "community":
             _, op, community = match.split()
