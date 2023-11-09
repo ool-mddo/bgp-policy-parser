@@ -552,7 +552,7 @@ class XRTranslator:
                     child_count += 10
             
             elif rule["if"] == "else":
-                # TODO: elseの実装
+                self.logger.info(f"'else' rule found in {policy.name}: {rule}")
                 else_policy = PolicyModel(
                     name=f"{PolicyPrefix.IF_CONDITION.value}{policy_basename}-else",
                 )
@@ -570,6 +570,7 @@ class XRTranslator:
                     ))
                 self.policies.append(else_policy)
                 
+                child_count = 10
                 for inner_rule in rule["rules"]:
                     inner_action = self.translate_rule(inner_rule)
                     if inner_action:
@@ -581,7 +582,7 @@ class XRTranslator:
                         ) 
                     else:
                         self.logger.info(f"{inner_rule} could not be translated.")
-                child_count += 10
+                    child_count += 10
 
             else:
                 self.logger.info(f"rule not translated: {rule}")
