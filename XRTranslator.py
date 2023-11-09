@@ -302,9 +302,9 @@ class XRTranslator:
                 condition.append({ "as-path-group": f"_generated_{name}"})
                 return condition
             else:
-              as_path_group_item = {"as-path-group": match.split()[-1]}
-              condition.append(as_path_group_item)
-              return condition
+                as_path_group_item = {"as-path-group": match.split()[-1]}
+                condition.append(as_path_group_item)
+                return condition
 
         # community match-any community-set
         elif match.split()[0] == "community":
@@ -362,8 +362,6 @@ class XRTranslator:
                 statements=[statement_list],
             )
             if_policy.set_default_reject()
-
-
 
         not_match_statement = Statement(name="10")
         not_match_statement.conditions.append({ "policy": f"{PolicyPrefix.IF_CONDITION.value}{basename}" })
@@ -460,11 +458,12 @@ class XRTranslator:
 
                 # ---------- then句の組み立て開始(if) ----------
                 self.logger.info(rule)
+                child_count = 10
                 for inner_rule in rule["rules"]:
                     if "if" in inner_rule.keys():
                         self.logger.info(f"translate nested if: {inner_rule}")
                         _dummy_ttp_policy = { 
-                            "name": policy_basename, 
+                            "name": f"{policy_basename}-{child_count}",
                             "rules": [inner_rule]
                         }
                         self.logger.info(f"dummy policy: {_dummy_ttp_policy}")
@@ -478,11 +477,14 @@ class XRTranslator:
                         inner_action = self.translate_rule(inner_rule)
                         if inner_action:
                             policy.statements.append(
-                                Statement(name=f"{policy_basename}-{count}",conditions=base_conditions,actions=[inner_action])
+                                Statement(
+                                    name=f"{policy_basename}-{child_count}",
+                                    conditions=base_conditions,actions=[inner_action]
+                                )
                             ) 
                         else:
                             self.logger.info(f"{inner_rule} could not be translated.")
-                        count += 10
+                    child_count += 10
 
                 # ---------- then句の組み立て終わり(if) ---------- 
 
