@@ -430,6 +430,7 @@ class XRTranslator:
 
             elif rule["if"] == "if":
                 self.logger.info(f"'if' rule found in {policy.name}: {rule}")
+
                 past_conditional_policies = []
 
                 # ---------- from句の組み立て開始(if) ---------- 
@@ -441,8 +442,7 @@ class XRTranslator:
 
                 # ネストされたifの場合は上の階層のifを一番最初に評価する
                 if parent_conditional_policy:
-                    if_policy.statements.insert(
-                        0,
+                    if_policy.statements.insert(0,
                         Statement(
                             name="parent-policy",
                             conditions=[{ "policy": self.get_opposite_policy_name(parent_conditional_policy.name) }],
@@ -460,8 +460,8 @@ class XRTranslator:
                 self.logger.info(rule)
                 child_count = 10
                 for inner_rule in rule["rules"]:
-                    if "if" in inner_rule.keys():
-                        self.logger.info(f"translate nested if: {inner_rule}")
+                    if "if" in inner_rule.keys() or "elseif" in inner_rule.keys():
+                        self.logger.info(f"translate nested if/elseif: {inner_rule}")
                         _dummy_ttp_policy = { 
                             "name": f"{policy_basename}-{child_count}",
                             "rules": [inner_rule]
@@ -489,9 +489,67 @@ class XRTranslator:
                 # ---------- then句の組み立て終わり(if) ---------- 
 
             elif rule["if"] == "elseif":
-                self.logger.info(f"skipping 'elseif': {rule}")
-                # TODO: elseifの実装
-                pass
+                self.logger.info(f"'elseif' rule found in {policy.name}: {rule}")
+
+                if_policy, not_if_policy = self.generate_conditional_policies(
+                    basename=policy_basename,
+                    if_condition=rule["condition"]
+                )
+                
+                for i, past_policy in enumerate(past_conditional_policies):
+                    if_policy.statements.insert(0,
+                        Statement(
+                            name=f"past-policy-{i}",
+                            conditions=[{ "policy": past_policy.name }],
+                            actions=[{ "target": "reject" }]
+                        )
+                    )
+
+                if parent_conditional_policy:
+                    if_policy.statements.insert(0,
+                        Statement(
+                            name="parent-policy",
+                            conditions=[{ "policy": self.get_opposite_policy_name(
+                                parent_conditional_policy.name
+                            ) }],
+                            actions=[{ "target": "reject" }],
+                        )
+                    )
+
+                if_policy.set_default_reject()
+                self.policies.extend([if_policy, not_if_policy])
+                base_conditions = [{ "policy": if_policy.name }]
+                past_conditional_policies.append(if_policy)
+
+                self.logger.info(rule)
+                child_count = 10
+                for inner_rule in rule["rules"]:
+                    if "if" in inner_rule.keys() or "elseif" in inner_rule.keys():
+                        self.logger.info(f"translate nested if/elseif: {inner_rule}")
+                        _dummy_ttp_policy = { 
+                            "name": f"{policy_basename}-{child_count}",
+                            "rules": [inner_rule]
+                        }
+                        self.logger.info(f"dummy policy: {_dummy_ttp_policy}")
+                        child_statements = self.translate_policy(
+                            ttp_policy=_dummy_ttp_policy,
+                            parent_conditional_policy=if_policy
+                        )
+                        self.logger.info(f'inner rule: {child_statements}')
+                        policy.statements.extend(child_statements)
+                    else:
+                        inner_action = self.translate_rule(inner_rule)
+                        if inner_action:
+                            policy.statements.append(
+                                Statement(
+                                    name=f"{policy_basename}-{child_count}",
+                                    conditions=base_conditions,actions=[inner_action]
+                                )
+                            ) 
+                        else:
+                            self.logger.info(f"{inner_rule} could not be translated.")
+
+                    child_count += 10
             
             elif rule["if"] == "else":
                 self.logger.info(f"skipping 'else': {rule}")
