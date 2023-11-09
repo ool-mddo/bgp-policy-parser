@@ -77,7 +77,7 @@ end-set {{ _end_ }}
 </group>
 
 
-<group name="policies">
+<group name="policies*">
 route-policy {{ name | _start_ }}
 
   <group name="rules*">
@@ -124,9 +124,8 @@ route-policy {{ name | _start_ }}
     {{ fi | _exact_space_ | re(end_if) | _end_ }}
     </group>
   {{ fi | _exact_space_ | re(end_if) | _end_ }}
-  </group>
 ## else
-  <group name="rules*">
+  <group>
   {{ if | _exact_space_ | re("else") | _start_ }} 
     <group name="rules*">
     {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
@@ -138,6 +137,7 @@ route-policy {{ name | _start_ }}
     {{ action | _exact_space_ | re(pass_drop_done) }}
     </group>
   {{ fi | _exact_space_ | re("endif") | _end_ }}
+  </group>
   </group>
 
   <group name="rules*">
