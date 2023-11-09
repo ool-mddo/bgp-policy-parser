@@ -363,8 +363,6 @@ class XRTranslator:
             )
             if_policy.set_default_reject()
 
-
-
         not_match_statement = Statement(name="10")
         not_match_statement.conditions.append({ "policy": f"{PolicyPrefix.IF_CONDITION.value}{basename}" })
         not_match_statement.actions.append({ "target": "reject" })
@@ -464,7 +462,7 @@ class XRTranslator:
                     if "if" in inner_rule.keys():
                         self.logger.info(f"translate nested if: {inner_rule}")
                         _dummy_ttp_policy = { 
-                            "name": policy_basename, 
+                            "name": f"{policy_basename}", 
                             "rules": [inner_rule]
                         }
                         self.logger.info(f"dummy policy: {_dummy_ttp_policy}")
@@ -478,11 +476,14 @@ class XRTranslator:
                         inner_action = self.translate_rule(inner_rule)
                         if inner_action:
                             policy.statements.append(
-                                Statement(name=f"{policy_basename}-{count}",conditions=base_conditions,actions=[inner_action])
+                                Statement(
+                                    name=f"{policy_basename}",
+                                    conditions=base_conditions,actions=[inner_action]
+                                )
                             ) 
                         else:
                             self.logger.info(f"{inner_rule} could not be translated.")
-                        count += 10
+                    count += 10
 
                 # ---------- then句の組み立て終わり(if) ---------- 
 
