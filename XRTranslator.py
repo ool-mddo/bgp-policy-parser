@@ -462,7 +462,7 @@ class XRTranslator:
                     if "if" in inner_rule.keys():
                         self.logger.info(f"translate nested if: {inner_rule}")
                         _dummy_ttp_policy = { 
-                            "name": f"{policy_basename}", 
+                            "name": f"{policy_basename}-{count}",
                             "rules": [inner_rule]
                         }
                         self.logger.info(f"dummy policy: {_dummy_ttp_policy}")
@@ -477,7 +477,7 @@ class XRTranslator:
                         if inner_action:
                             policy.statements.append(
                                 Statement(
-                                    name=f"{policy_basename}",
+                                    name=f"{policy_basename}-{count}",
                                     conditions=base_conditions,actions=[inner_action]
                                 )
                             ) 
