@@ -339,7 +339,7 @@ class XRTranslator:
                     statement.conditions.append({"community": [new_community_set_name]})
                     self.logger.info(f"update condition community: {new_community_set_name}")            
             if_policy = PolicyModel(
-                name=f"{PolicyPrefix.MATCH.value}{basename}",
+                name=f"{PolicyPrefix.IF_CONDITION.value}{basename}",
                 statements=[statement],
             )
             if_policy.set_default_reject()
@@ -358,7 +358,7 @@ class XRTranslator:
                 statement.actions.append({ "target": "accept" })
                 statement_list.append(statement)
             if_policy = PolicyModel(
-                name=f"{PolicyPrefix.MATCH.value}{basename}",
+                name=f"{PolicyPrefix.IF_CONDITION.value}{basename}",
                 statements=[statement_list],
             )
             if_policy.set_default_reject()
