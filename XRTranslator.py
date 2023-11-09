@@ -552,9 +552,39 @@ class XRTranslator:
                     child_count += 10
             
             elif rule["if"] == "else":
-                self.logger.info(f"skipping 'else': {rule}")
                 # TODO: elseの実装
-                pass
+                else_policy = PolicyModel(
+                    name=f"{PolicyPrefix.IF_CONDITION.value}{policy_basename}-else",
+                )
+                else_policy.set_default_accept()
+                base_conditions = [{
+                    "policy": else_policy.name
+                }]
+
+                # elseなので前にあるif/elseif節の条件に合致するものはrejectする
+                for i, past_policy in enumerate(past_conditional_policies):
+                    else_policy.statements.append(Statement(
+                        name=f"past-policy-{i}",
+                        conditions=[{ "policy": past_policy.name }],
+                        actions=[{ "target": "reject" }]
+                    ))
+                self.policies.append(else_policy)
+                
+                for inner_rule in rule["rules"]:
+                    inner_action = self.translate_rule(inner_rule)
+                    if inner_action:
+                        policy.statements.append(
+                            Statement(
+                                name=f"{policy_basename}-{child_count}",
+                                conditions=base_conditions,actions=[inner_action]
+                            )
+                        ) 
+                    else:
+                        self.logger.info(f"{inner_rule} could not be translated.")
+                child_count += 10
+
+            else:
+                self.logger.info(f"rule not translated: {rule}")
 
         if parent_conditional_policy:
             return policy.statements
