@@ -21,6 +21,9 @@ def split_by_line(data):
 def strip_comma(data):
     return data.rstrip(',')
 
+def strip_squote(data):
+    return data.strip("'")
+
 def to_dict(data):
     key, *value = data.split()
     return {"value": ''.join(value)}
@@ -57,7 +60,7 @@ end-set {{ _end_ }}
 <group name="as-path-sets">
 as-path-set {{ name | _start_ }}
   <group name="conditions*">
-  ios-regex {{ pattern | _line_ }}
+  ios-regex {{ pattern | _line_ | macro(strip_squote)}}
   </group>
   <group name="conditions*">
   length {{ condition }} {{ length }}
