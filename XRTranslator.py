@@ -158,27 +158,33 @@ class XRTranslator:
                 "as-path": {"name": aspath_obj["name"]},
             }
             
-            if "conditions" in aspath_obj.keys():
+            # 空のas-path-set
+            if "conditions" not in aspath_obj.keys():
+                aspath_data["as-path"]["pattern"] = ".*"
+                continue
 
-                for aspath_condition in aspath_obj["conditions"]:
+            for aspath_condition in aspath_obj["conditions"]:
+                if "pattern" in aspath_condition.keys():
+                    aspath_data["as-path"]["pattern"] = self.translate_aspath_pattern(aspath_condition["pattern"])
 
-                    if "pattern" in aspath_condition.keys():
-                        aspath_data["as-path"]["pattern"] = aspath_condition["pattern"]
-
-                    if "length" in aspath_condition.keys():
-                        if aspath_condition["condition"] == "le":
-                            aspath_data["as-path"]["length"] = {
-                                "max": aspath_condition["length"]
-                            }
-                        elif aspath_condition["condition"] == "ge":
-                            aspath_data["as-path"]["length"] = {
-                                "min": aspath_condition["length"]
-                            }
-
-            else: # 空のas-path-set
-                aspath_data["as-path"]["pattern"] = "'.*'"
+                if "length" in aspath_condition.keys():
+                    if aspath_condition["condition"] == "le":
+                        aspath_data["as-path"]["length"] = {
+                            "max": aspath_condition["length"]
+                        }
+                    elif aspath_condition["condition"] == "ge":
+                        aspath_data["as-path"]["length"] = {
+                            "min": aspath_condition["length"]
+                        }
 
             self.aspath_set.append(aspath_data)
+
+    def translate_aspath_pattern(self, pattern: str) -> str:
+        """
+        IOS-XRからJunosの正規表現に変換する 
+        """
+        result = pattern.replace('_', ' ')
+        return result
 
     def translate_prefix_set(self) -> None:
         self.logger.info("- prefix-set")
