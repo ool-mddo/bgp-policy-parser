@@ -158,27 +158,33 @@ class XRTranslator:
                 "as-path": {"name": aspath_obj["name"]},
             }
             
-            if "conditions" in aspath_obj.keys():
+            # 空のas-path-set
+            if "conditions" not in aspath_obj.keys():
+                aspath_data["as-path"]["pattern"] = ".*"
+                continue
 
-                for aspath_condition in aspath_obj["conditions"]:
+            for aspath_condition in aspath_obj["conditions"]:
+                if "pattern" in aspath_condition.keys():
+                    aspath_data["as-path"]["pattern"] = self.translate_aspath_pattern(aspath_condition["pattern"])
 
-                    if "pattern" in aspath_condition.keys():
-                        aspath_data["as-path"]["pattern"] = aspath_condition["pattern"]
-
-                    if "length" in aspath_condition.keys():
-                        if aspath_condition["condition"] == "le":
-                            aspath_data["as-path"]["length"] = {
-                                "max": aspath_condition["length"]
-                            }
-                        elif aspath_condition["condition"] == "ge":
-                            aspath_data["as-path"]["length"] = {
-                                "min": aspath_condition["length"]
-                            }
-
-            else: # 空のas-path-set
-                aspath_data["as-path"]["pattern"] = "'.*'"
+                if "length" in aspath_condition.keys():
+                    if aspath_condition["condition"] == "le":
+                        aspath_data["as-path"]["length"] = {
+                            "max": aspath_condition["length"]
+                        }
+                    elif aspath_condition["condition"] == "ge":
+                        aspath_data["as-path"]["length"] = {
+                            "min": aspath_condition["length"]
+                        }
 
             self.aspath_set.append(aspath_data)
+
+    def translate_aspath_pattern(self, pattern: str) -> str:
+        """
+        IOS-XRからJunosの正規表現に変換する 
+        """
+        result = pattern.replace('_', ' ')
+        return result
 
     def translate_prefix_set(self) -> None:
         self.logger.info("- prefix-set")
@@ -407,6 +413,7 @@ class XRTranslator:
         count = 0
         past_conditional_policies: list[PolicyModel] = []
 
+        tmp_statement = None
         for rule in ttp_policy["rules"]:
             self.logger.info(f"start: {rule}")
             count += 10
@@ -414,19 +421,20 @@ class XRTranslator:
 
             if "if" not in rule.keys():
                 if parent_conditional_policy:
-                    condition = [{"policy": parent_conditional_policy.name}]
+                    conditions = [{"policy": parent_conditional_policy.name}]
                 else:
                     conditions = []
                 action = self.translate_rule(rule)
                 past_conditional_policies = []
 
-                policy.statements.append(
-                    Statement(
-                        name=policy_basename,
-                        conditions=conditions,
+                if tmp_statement:
+                    tmp_statement.actions.append(action)
+                else:
+                    tmp_statement = Statement(
+                        name=policy_basename, 
+                        conditions=conditions, 
                         actions=[action]
                     )
-                )
 
             elif rule["if"] == "if":
                 self.logger.info(f"'if' rule found in {policy.name}: {rule}")
@@ -459,6 +467,16 @@ class XRTranslator:
                 # ---------- then句の組み立て開始(if) ----------
                 self.logger.info(rule)
                 child_count = 10
+
+                if tmp_statement:
+                    policy.statements.append(tmp_statement)
+
+                tmp_statement = Statement(
+                    name=f"{policy_basename}",
+                    conditions=base_conditions,
+                    actions=[]
+                )
+
                 for inner_rule in rule["rules"]:
                     if "if" in inner_rule.keys() or "elseif" in inner_rule.keys():
                         self.logger.info(f"translate nested if/elseif: {inner_rule}")
@@ -476,15 +494,13 @@ class XRTranslator:
                     else:
                         inner_action = self.translate_rule(inner_rule)
                         if inner_action:
-                            policy.statements.append(
-                                Statement(
-                                    name=f"{policy_basename}-{child_count}",
-                                    conditions=base_conditions,actions=[inner_action]
-                                )
-                            ) 
+                            tmp_statement.actions.append(inner_action)
                         else:
                             self.logger.info(f"{inner_rule} could not be translated.")
                     child_count += 10
+
+                policy.statements.append(tmp_statement)
+                tmp_statement = None
 
                 # ---------- then句の組み立て終わり(if) ---------- 
 
@@ -523,6 +539,16 @@ class XRTranslator:
 
                 self.logger.info(rule)
                 child_count = 10
+
+                if tmp_statement:
+                    policy.statements.append(tmp_statement)
+
+                tmp_statement = Statement(
+                    name=f"{policy_basename}",
+                    conditions=base_conditions,
+                    actions=[]
+                )
+
                 for inner_rule in rule["rules"]:
                     if "if" in inner_rule.keys() or "elseif" in inner_rule.keys():
                         self.logger.info(f"translate nested if/elseif: {inner_rule}")
@@ -548,8 +574,9 @@ class XRTranslator:
                             ) 
                         else:
                             self.logger.info(f"{inner_rule} could not be translated.")
-
                     child_count += 10
+                policy.statements.append(tmp_statement)
+                tmp_statement = None
             
             elif rule["if"] == "else":
                 self.logger.info(f"'else' rule found in {policy.name}: {rule}")
@@ -583,15 +610,18 @@ class XRTranslator:
                     else:
                         self.logger.info(f"{inner_rule} could not be translated.")
                     child_count += 10
-
             else:
                 self.logger.info(f"rule not translated: {rule}")
 
+        if tmp_statement:
+            policy.statements.append(tmp_statement)
+            tmp_statement = None
+
         if parent_conditional_policy:
             return policy.statements
-        else:
-            self.logger.info(f"appending policy: {policy}")
-            self.policies.append(policy)
+
+        self.logger.info(f"appending policy: {policy}")
+        self.policies.append(policy)
 
 if __name__ == "__main__":
     ttp_file = sys.argv[1]
