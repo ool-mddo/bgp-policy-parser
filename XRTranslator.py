@@ -161,6 +161,7 @@ class XRTranslator:
             # 空のas-path-set
             if "conditions" not in aspath_obj.keys():
                 aspath_data["as-path"]["pattern"] = ".*"
+                self.aspath_set.append(aspath_data)
                 continue
 
             for aspath_condition in aspath_obj["conditions"]:
@@ -176,7 +177,6 @@ class XRTranslator:
                         aspath_data["as-path"]["length"] = {
                             "min": aspath_condition["length"]
                         }
-
             self.aspath_set.append(aspath_data)
 
     def translate_aspath_pattern(self, pattern: str) -> str:
@@ -248,8 +248,8 @@ class XRTranslator:
                     action = {"community": {"action": "set", "name": community_name}}
             elif attr == "next-hop":
                 action = {"next-hop": rule["value"]}
-            else:
-                action = {"unknown action": ""}
+            elif attr == "origin":
+                action = {"origin": rule["value"]}
 
         elif rule["action"] == "delete":
             attr = rule["attr"]
@@ -265,8 +265,6 @@ class XRTranslator:
             target_maps = {"pass": "next term", "drop": "reject", "done": "accept"}
             action = {"target": target_maps[rule["action"]]}
 
-        else:
-           action = "none"
         return action
 
 
@@ -369,7 +367,7 @@ class XRTranslator:
                 statement_list.append(statement)
             if_policy = PolicyModel(
                 name=f"{PolicyPrefix.IF_CONDITION.value}{basename}",
-                statements=[statement_list],
+                statements=statement_list,
             )
             if_policy.set_default_reject()
 
@@ -394,6 +392,9 @@ class XRTranslator:
                     if i["name"] == item["community"][0]:
                         new_community_set_name.append(item["community"][0])
                         new_community_set_communities.extend(i["communities"])                
+                #if i["name"] == item["community"][0]:
+                #   new_community_set_name.append(item["community"][0])
+                #   new_community_set_communities.extend(i["communities"])                
         self.community_set.append(
                 {
                 "name": "-and-".join(new_community_set_name),
@@ -497,7 +498,6 @@ class XRTranslator:
                         self.logger.info(f'inner rule: {child_statements}')
                         policy.statements.extend(child_statements)
                     else:
-                        print ("debug: " + str(inner_rule))
                         inner_action = self.translate_rule(inner_rule)
                         if inner_action:
                             tmp_statement.actions.append(inner_action)
