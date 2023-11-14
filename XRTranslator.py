@@ -248,6 +248,8 @@ class XRTranslator:
                     action = {"community": {"action": "set", "name": community_name}}
             elif attr == "next-hop":
                 action = {"next-hop": rule["value"]}
+            else:
+                action = {"unknown action": ""}
 
         elif rule["action"] == "delete":
             attr = rule["attr"]
@@ -263,6 +265,8 @@ class XRTranslator:
             target_maps = {"pass": "next term", "drop": "reject", "done": "accept"}
             action = {"target": target_maps[rule["action"]]}
 
+        else:
+           action = "none"
         return action
 
 
@@ -386,9 +390,10 @@ class XRTranslator:
         new_community_set_communities = []        
         for item in communities:
             for i in self.community_set:
-                if i["name"] == item["community"][0]:
-                    new_community_set_name.append(item["community"][0])
-                    new_community_set_communities.extend(i["communities"])                
+                if "community" in item:
+                    if i["name"] == item["community"][0]:
+                        new_community_set_name.append(item["community"][0])
+                        new_community_set_communities.extend(i["communities"])                
         self.community_set.append(
                 {
                 "name": "-and-".join(new_community_set_name),
@@ -492,6 +497,7 @@ class XRTranslator:
                         self.logger.info(f'inner rule: {child_statements}')
                         policy.statements.extend(child_statements)
                     else:
+                        print ("debug: " + str(inner_rule))
                         inner_action = self.translate_rule(inner_rule)
                         if inner_action:
                             tmp_statement.actions.append(inner_action)
