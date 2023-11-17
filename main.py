@@ -179,7 +179,6 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
 
             if "statements" not in item.keys():
                 logger.info(f"statements not found in {item['name']}")
-                print (str(item))
                 if "default" in item.keys():
                   default = {"actions": item["default"]["actions"]}
                   data = {"name": item["name"], "statements": "none" , "default": default}
