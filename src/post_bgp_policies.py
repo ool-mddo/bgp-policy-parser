@@ -11,7 +11,7 @@ BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_outpu
 MODEL_CONDUCTOR_HOST = os.environ.get("MODEL_CONDUCTOR_HOST", "model-conductor:9292")
 
 
-def read_bgp_policy_data(network: str, snapshot: str) -> List:
+def _read_bgp_policy_data(network: str, snapshot: str) -> List:
     """Read bgp-policy data from files
     Args:
         network (str): Network name
@@ -28,7 +28,7 @@ def read_bgp_policy_data(network: str, snapshot: str) -> List:
     return bgp_policies
 
 
-def convert_policy(bgp_policy: Dict) -> Dict:
+def _convert_policy(bgp_policy: Dict) -> Dict:
     """Convert a policy (to merge topology data)
     Args:
         bgp_policy (Dict): A BGP policy
@@ -46,28 +46,30 @@ def convert_policy(bgp_policy: Dict) -> Dict:
     }
 
 
-def pack_policies(bgp_policies: List) -> Dict:
+def _pack_policies(bgp_policies: List) -> Dict:
     """Pack policy data to single Object
     Args:
         bgp_policies (List): Policies (list of policy)
     Returns:
         Dict: Node-attribute patches (includes attribute patch for several node)
     """
-    packed_data = {"node": [convert_policy(d) for d in bgp_policies]}
+    packed_data = {"node": [_convert_policy(d) for d in bgp_policies]}
     return packed_data
 
 
-def post_bgp_policy(network: str, snapshot: str, bgp_policy: Dict) -> requests.Response:
+def post_bgp_policy(network: str, snapshot: str) -> requests.Response:
     """Post node-attribute patches to merge topology data
     Args:
         network (str): Network name
         snapshot (str): Snapshot name
-        bgp_policy (Dict): Node attribute patches (packed policy data)
     Returns:
         requests.Response
     """
+    bgp_policies = _read_bgp_policy_data(network, snapshot)
+    packed_policy = _pack_policies(bgp_policies)
+
     url = f"http://{MODEL_CONDUCTOR_HOST}/conduct/{network}/{snapshot}/topology/bgp_proc/policies"
-    payload = json.dumps(bgp_policy)
+    payload = json.dumps(packed_policy)
     headers = {"Content-Type": "application/json"}
     return requests.post(url=url, data=payload, headers=headers)
 
@@ -86,10 +88,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    bgp_policies = read_bgp_policy_data(args.network, args.snapshot)
-    packed_policy = pack_policies(bgp_policies)
-
     print("Post policy data")
-    response = post_bgp_policy(args.network, args.snapshot, packed_policy)
+    response = post_bgp_policy(args.network, args.snapshot)
     print(f"- status: {response.status_code}")
     # print(f"- status: {response.text}")

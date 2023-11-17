@@ -14,3 +14,5 @@ RUN pip install --no-cache-dir -r requirements_prod.txt
 # enable multiple line paste in python REPL (python -i)
 RUN echo "set enable-bracketed-paste off" >> ~/.inputrc
 # NOTE: currently, NO entrypoint, to use only environment packing, it will be API service
+ENV PYTHONPATH=/bgp-policy-parser/src
+ENTRYPOINT ["python3", "src/app.py"]
