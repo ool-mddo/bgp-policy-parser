@@ -123,11 +123,41 @@ route-policy {{ name | _start_ }}
         {{ action | _exact_space_ | re(pass_drop_done) }}
         </group>
       {{ fi | _exact_space_ | re(end_if) | _end_ }}
+
+      ## 3段目のelse
+      <group>
+      {{ if | _exact_space_ | re("else") | _start_ }} 
+        <group name="rules*">
+        {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+        </group>
+        <group name="rules*">
+        {{ action | _exact_space_ | re(apply) }} {{ value }}
+        </group>
+        <group name="rules*">
+        {{ action | _exact_space_ | re(pass_drop_done) }}
+        </group>
       </group>
-    {{ fi | _exact_space_ | re(end_if) | _end_ }}
+
+      {{ fi | _exact_space_ | re("endif") | _end_ }}
+      </group>
+
+    ## 2段目のelse
+    <group>
+    {{ if | _exact_space_ | re("else") | _start_ }} 
+      <group name="rules*">
+      {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+      </group>
+      <group name="rules*">
+      {{ action | _exact_space_ | re(apply) }} {{ value }}
+      </group>
+      <group name="rules*">
+      {{ action | _exact_space_ | re(pass_drop_done) }}
+      </group>
     </group>
-  {{ fi | _exact_space_ | re(end_if) | _end_ }}
-## else
+    {{ fi | _exact_space_ | re("endif") | _end_ }}
+
+    </group>
+  ## 1段目のelse
   <group>
   {{ if | _exact_space_ | re("else") | _start_ }} 
     <group name="rules*">
@@ -139,8 +169,9 @@ route-policy {{ name | _start_ }}
     <group name="rules*">
     {{ action | _exact_space_ | re(pass_drop_done) }}
     </group>
-  {{ fi | _exact_space_ | re("endif") | _end_ }}
   </group>
+
+  {{ fi | _exact_space_ | re("endif") | _end_ }}
   </group>
 
   <group name="rules*">
