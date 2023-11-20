@@ -328,6 +328,7 @@ def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
             "as-path-set": xr_translator.aspath_set,
             "community-set": xr_translator.community_set,
             "policies": xr_translator.policies,
+            "bgp_neighbors": xr_translator.bgp_neighbors
         }
 
         _save_policy_model_output(
