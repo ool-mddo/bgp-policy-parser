@@ -2,13 +2,11 @@ import json, sys
 from sys import stderr, stdout
 from logging import getLogger, StreamHandler, Formatter, INFO, FileHandler, DEBUG
 from dataclasses import dataclass, field, asdict, is_dataclass
-from typing import Union
+from typing import Union, Self
 from enum import Enum
 
 
 class PolicyPrefix(Enum):
-    MATCH = "match-"
-    NOT_MATCH = "not-match-"
     IF_CONDITION = "if-condition-"
     NOT_IF_CONDITION = "not-if-condition-"
 
@@ -19,14 +17,22 @@ class PMEncoder(json.JSONEncoder):
             return asdict(data)
         return json.JSONEncoder.default(self, data)
 
-
 @dataclass
 class Statement:
     name: str = ""
     conditions: list[dict] = field(default_factory=list)
     actions: list[dict] = field(default_factory=list)
 
+    def is_empty(self) -> bool:
+        if len(self.actions) == 0:
+            return True
+        else:
+            return False
 
+    @staticmethod
+    def generate_empty_statement() -> Self:
+        return Statement(name="", conditions=[], actions=[])
+        
 @dataclass
 class PolicyModel:
     name: str = ""
@@ -39,6 +45,15 @@ class PolicyModel:
     def set_default_reject(self):
         self.default = {"actions": [{"target": "reject"}]}
 
+    def insert_policy_as_reject_statement(self, policy: Self, statement_name: str):
+        self.statements.insert(
+            0,
+            Statement(
+                name=statement_name,
+                conditions=[{"policy": policy.name}],
+                actions=[{"target": "reject"}],
+            ),
+        )
 
 class XRTranslator:
     def __init__(self):
@@ -80,30 +95,21 @@ class XRTranslator:
             self.logger.info(f"multiple policy objects found for {name}.")
         return result[0]
 
-    def get_opposite_policy_name(self, name: str) -> Union[str, None]:
+    def get_opposite_policy(self, policy: PolicyModel) -> Union[PolicyModel, None]:
         maps = {
             PolicyPrefix.IF_CONDITION: PolicyPrefix.NOT_IF_CONDITION,
             PolicyPrefix.NOT_IF_CONDITION: PolicyPrefix.IF_CONDITION,
-            PolicyPrefix.MATCH: PolicyPrefix.NOT_MATCH,
-            PolicyPrefix.NOT_MATCH: PolicyPrefix.MATCH,
         }
 
-        if name.startswith(PolicyPrefix.IF_CONDITION.value):
-            opposite_policy_name = name.replace(
-                PolicyPrefix.IF_CONDITION.value, maps[PolicyPrefix.IF_CONDITION].value
+        if policy.name.startswith(PolicyPrefix.IF_CONDITION.value):
+            opposite_policy_name = policy.name.replace(
+                PolicyPrefix.IF_CONDITION.value, 
+                maps[PolicyPrefix.IF_CONDITION].value
             )
-        elif name.startswith(PolicyPrefix.NOT_IF_CONDITION.value):
-            opposite_policy_name = name.replace(
+        elif policy.name.startswith(PolicyPrefix.NOT_IF_CONDITION.value):
+            opposite_policy_name = policy.name.replace(
                 PolicyPrefix.NOT_IF_CONDITION.value,
                 maps[PolicyPrefix.NOT_IF_CONDITION].value,
-            )
-        elif name.startswith(PolicyPrefix.MATCH.value):
-            opposite_policy_name = name.replace(
-                PolicyPrefix.MATCH.value, maps[PolicyPrefix.MATCH].value
-            )
-        elif name.startswith(PolicyPrefix.NOT_MATCH.value):
-            opposite_policy_name = name.replace(
-                PolicyPrefix.NOT_MATCH.value, maps[PolicyPrefix.NOT_MATCH].value
             )
         else:
             self.logger.info("Could not find opposite policy for {name}.")
@@ -111,11 +117,12 @@ class XRTranslator:
 
         if opposite_policy_name:
             self.logger.info(
-                f"opposite policy for '{name}' is '{opposite_policy_name}'"
+                f"opposite policy for '{policy}' is '{opposite_policy_name}'"
             )
-            return opposite_policy_name
+            opposite_policy = self.get_policy_by_name(opposite_policy_name)
+            return opposite_policy
         else:
-            self.logger.info(f"opposite policy for '{name}' not found")
+            self.logger.info(f"opposite policy for '{policy}' not found")
             return None
 
     def update_policy(self, policy: PolicyModel):
@@ -450,7 +457,8 @@ class XRTranslator:
         count = 0
         past_conditional_policies: list[PolicyModel] = []
 
-        tmp_statement = None
+        statement = Statement.generate_empty_statement()
+
         for rule in ttp_policy["rules"]:
             self.logger.info(f"start: {rule}")
             count += 10
@@ -464,10 +472,10 @@ class XRTranslator:
                 action = self.translate_rule(rule)
                 past_conditional_policies = []
 
-                if tmp_statement:
-                    tmp_statement.actions.append(action)
+                if not statement.is_empty():
+                    statement.actions.append(action)
                 else:
-                    tmp_statement = Statement(
+                    statement = Statement(
                         name=policy_basename, conditions=conditions, actions=[action]
                     )
 
@@ -482,22 +490,14 @@ class XRTranslator:
                     basename=policy_basename, if_condition=rule["condition"]
                 )
 
-                # ネストされたifの場合は上の階層のifを一番最初に評価する
+                # ネストされたifの場合は上の階層の条件にマッチしていることが前提
+                # それにマッチしない経路はrejectする
                 if parent_conditional_policy:
-                    if_policy.statements.insert(
-                        0,
-                        Statement(
-                            name="parent-policy",
-                            conditions=[
-                                {
-                                    "policy": self.get_opposite_policy_name(
-                                        parent_conditional_policy.name
-                                    )
-                                }
-                            ],
-                            actions=[{"target": "reject"}],
-                        ),
+                    if_policy.insert_policy_as_reject_statement(
+                        policy=self.get_opposite_policy(parent_conditional_policy),
+                        statement_name="parent-policy"
                     )
+
                 if_policy.set_default_reject()
                 self.policies.extend([if_policy, not_if_policy])
                 past_conditional_policies.append(if_policy)
@@ -505,20 +505,30 @@ class XRTranslator:
                 base_conditions = [{"policy": if_policy.name}]
                 # ---------- from句の組み立て終わり(if) ----------
 
+                # ifが現れた場合は一旦そこでactionsは区切る
+                if not statement.is_empty():
+                    policy.statements.append(statement)
+
+                statement = Statement(
+                    name=f"{policy_basename}", conditions=base_conditions, actions=[]
+                )
+
                 # ---------- then句の組み立て開始(if) ----------
                 self.logger.info(rule)
                 child_count = 10
 
-                if tmp_statement:
-                    policy.statements.append(tmp_statement)
-
-                tmp_statement = Statement(
-                    name=f"{policy_basename}", conditions=base_conditions, actions=[]
-                )
-
                 for inner_rule in rule["rules"]:
-                    if "if" in inner_rule.keys() or "elseif" in inner_rule.keys():
+                    if "if" in inner_rule.keys():
+
                         self.logger.info(f"translate nested if/elseif: {inner_rule}")
+
+                        if not statement.is_empty():
+                            policy.statements.append(statement)
+
+                        statement = Statement(
+                            name=f"{policy_basename}", conditions=base_conditions, actions=[]
+                        )
+                        
                         _dummy_ttp_policy = {
                             "name": f"{policy_basename}-{child_count}",
                             "rules": [inner_rule],
@@ -533,47 +543,41 @@ class XRTranslator:
                     else:
                         inner_action = self.translate_rule(inner_rule)
                         if inner_action:
-                            tmp_statement.actions.append(inner_action)
+                            statement.actions.append(inner_action)
                         else:
                             self.logger.info(f"{inner_rule} could not be translated.")
                     child_count += 10
-
-                policy.statements.append(tmp_statement)
-                tmp_statement = None
-
+                
                 # ---------- then句の組み立て終わり(if) ----------
+                
+                if not statement.is_empty():
+                    policy.statements.append(statement)
+
+                statement = Statement.generate_empty_statement()
 
             elif rule["if"] == "elseif":
                 self.logger.info(f"'elseif' rule found in {policy.name}: {rule}")
 
+
+
+                # ---------- from句の組み立て開始(elseif) ----------
+                # if文の条件判定を行うためのポリシーを作成
                 if_policy, not_if_policy = self.generate_conditional_policies(
                     basename=policy_basename, if_condition=rule["condition"]
                 )
 
+                # elseifなので事前のif句の条件はすべて否定する
                 for i, past_policy in enumerate(past_conditional_policies):
-                    if_policy.statements.insert(
-                        0,
-                        Statement(
-                            name=f"past-policy-{i}",
-                            conditions=[{"policy": past_policy.name}],
-                            actions=[{"target": "reject"}],
-                        ),
+                    if_policy.insert_policy_as_reject_statement(
+                        policy=past_policy, statement_name=f"past-policy-{i}"
                     )
 
+                # ネストされたelseifの場合は上の階層の条件にマッチしていることが前提
+                # マッチしない場合はreject
                 if parent_conditional_policy:
-                    if_policy.statements.insert(
-                        0,
-                        Statement(
-                            name="parent-policy",
-                            conditions=[
-                                {
-                                    "policy": self.get_opposite_policy_name(
-                                        parent_conditional_policy.name
-                                    )
-                                }
-                            ],
-                            actions=[{"target": "reject"}],
-                        ),
+                    if_policy.insert_policy_as_reject_statement(
+                        policy=self.get_opposite_policy(parent_conditional_policy),
+                        statement_name="parent-policy"
                     )
 
                 if_policy.set_default_reject()
@@ -584,16 +588,29 @@ class XRTranslator:
                 self.logger.info(rule)
                 child_count = 10
 
-                if tmp_statement:
-                    policy.statements.append(tmp_statement)
+                # ---------- from句の組み立て終わり(elseif) ----------
 
-                tmp_statement = Statement(
+                # elseifが現れた場合はそこでactionsを区切る
+                if not statement.is_empty():
+                    policy.statements.append(statement)
+
+                statement = Statement(
                     name=f"{policy_basename}", conditions=base_conditions, actions=[]
                 )
+
+                # ---------- then句の組み立て開始(elseif) ----------
 
                 for inner_rule in rule["rules"]:
                     if "if" in inner_rule.keys() or "elseif" in inner_rule.keys():
                         self.logger.info(f"translate nested if/elseif: {inner_rule}")
+
+                        if not statement.is_empty():
+                            policy.statements.append(statement)
+
+                        statement = Statement(
+                            name=f"{policy_basename}", conditions=base_conditions, actions=[]
+                        )
+
                         _dummy_ttp_policy = {
                             "name": f"{policy_basename}-{child_count}",
                             "rules": [inner_rule],
@@ -608,21 +625,21 @@ class XRTranslator:
                     else:
                         inner_action = self.translate_rule(inner_rule)
                         if inner_action:
-                            policy.statements.append(
-                                Statement(
-                                    name=f"{policy_basename}-{child_count}",
-                                    conditions=base_conditions,
-                                    actions=[inner_action],
-                                )
-                            )
+                            statement.actions.append(inner_action)
                         else:
                             self.logger.info(f"{inner_rule} could not be translated.")
+
                     child_count += 10
-                policy.statements.append(tmp_statement)
-                tmp_statement = None
+                
+                if not statement.is_empty():
+                    policy.statements.append(statement)
+
+                statement = Statement.generate_empty_statement()
 
             elif rule["if"] == "else":
                 self.logger.info(f"'else' rule found in {policy.name}: {rule}")
+
+                # ---------- from句の組み立て開始(else) ----------
                 else_policy = PolicyModel(
                     name=f"{PolicyPrefix.IF_CONDITION.value}{policy_basename}-else",
                 )
@@ -631,35 +648,44 @@ class XRTranslator:
 
                 # elseなので前にあるif/elseif節の条件に合致するものはrejectする
                 for i, past_policy in enumerate(past_conditional_policies):
-                    else_policy.statements.append(
-                        Statement(
-                            name=f"past-policy-{i}",
-                            conditions=[{"policy": past_policy.name}],
-                            actions=[{"target": "reject"}],
-                        )
+                    else_policy.insert_policy_as_reject_statement(
+                        policy=past_policy,
+                        statement_name=f"past-policy-{i}"
                     )
+
                 self.policies.append(else_policy)
+
+                # ---------- from句の組み立て終わり(else) ----------
+
+                if not statement.is_empty():
+                    policy.statements.append(statement)
+                
+                statement = Statement(
+                    name=f"{policy_basename}", conditions=base_conditions, actions=[]
+                )
+
+                # ---------- then句の組み立て開始(else) ----------
 
                 child_count = 10
                 for inner_rule in rule["rules"]:
                     inner_action = self.translate_rule(inner_rule)
                     if inner_action:
-                        policy.statements.append(
-                            Statement(
-                                name=f"{policy_basename}-{child_count}",
-                                conditions=base_conditions,
-                                actions=[inner_action],
-                            )
-                        )
+                        statement.actions.append(inner_action),
                     else:
                         self.logger.info(f"{inner_rule} could not be translated.")
                     child_count += 10
+
+                if statement.actions:
+                    policy.statements.append(statement)
+
+                statement = Statement.generate_empty_statement()
+
             else:
                 self.logger.info(f"rule not translated: {rule}")
 
-        if tmp_statement:
-            policy.statements.append(tmp_statement)
-            tmp_statement = None
+        if not statement.is_empty():
+            policy.statements.append(statement)
+            statement = Statement(name="", conditions=[], actions=[])
 
         if parent_conditional_policy:
             return policy.statements
