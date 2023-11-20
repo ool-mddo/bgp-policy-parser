@@ -227,7 +227,7 @@ router bgp {{ asn | _start_ }}
   description {{ description | _exact_space_ | _line_ | macro(strip_dquote) }}
   update-source {{ update-source }}
 
-  <group name="af_{{ afi }}_{{ safi }}">
+  <group name="address-families*">
   address-family {{ afi | _exact_space_ | _start_ }} {{ safi }}
    <group name="configs">
    
