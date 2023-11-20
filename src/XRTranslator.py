@@ -2,7 +2,7 @@ import json, sys
 from sys import stderr, stdout
 from logging import getLogger, StreamHandler, Formatter, INFO, FileHandler, DEBUG
 from dataclasses import dataclass, field, asdict, is_dataclass
-from typing import Union, Self
+from typing import Union, Self, Callable
 from enum import Enum
 
 
@@ -55,6 +55,37 @@ class PolicyModel:
             ),
         )
 
+    def has_next_hop_self_in_head(self) -> bool:
+        if self.statements[0].name == '_generated_next-hop-self':
+            return True
+        else:
+            return False
+
+    def insert_next_hop_self_in_head(self):
+        self.statements.insert(0,
+            Statement(
+                name='_generated_next-hop-self',
+                conditions=[],
+                actions=[{ "next-hop": "self" }]
+            )
+        )
+
+@dataclass
+class AddressFamily:
+    afi: str
+    safi: str
+    send_community_ebgp: bool = False
+    next_hop_self: bool = False
+    remove_private_as: bool = False
+    route_policy_in: str = ""
+    route_policy_out: str = ""
+
+@dataclass
+class BGPNeighbor:
+    remote_as: int
+    remote_ip: str
+    address_families: list[AddressFamily] = field(default_factory=list)
+
 class XRTranslator:
     def __init__(self):
         self.logger = getLogger("xr")
@@ -77,10 +108,12 @@ class XRTranslator:
         self.community_set = []
         self.aspath_set = []
         self.prefix_set = []
+        self.bgp_neighbors: list[BGPNeighbor] = []
         self.policies: list[PolicyModel] = []
 
         self.ttp_parsed_data = ttp_parsed_data[0][0]
 
+        self.translate_bgp_neighbors()
         self.translate_node()
         self.translate_community_set()
         self.translate_aspath_set()
@@ -130,6 +163,43 @@ class XRTranslator:
         target_policy = self.get_policy_by_name(name)
         target_index = self.policies.index(target_policy)
         self.policies[target_index] = policy
+
+    def translate_bgp_neighbors(self) -> None:
+        for ttp_neighbor in self.ttp_parsed_data['bgp']['neighbors']:
+            self.logger.info(f'translate bgp neighbo: {ttp_neighbor}')
+            neighbor = BGPNeighbor(
+                remote_as = ttp_neighbor['remote-as'],
+                remote_ip = ttp_neighbor['remote-ip']
+            )
+            for ttp_af in ttp_neighbor['address-families']:
+                af = self.translate_af(ttp_af) 
+                neighbor.address_families.append(af) 
+            
+            self.logger.info(f'appen neighbor; {neighbor}')
+            self.bgp_neighbors.append(neighbor)
+
+    def translate_af(self, ttp_af: [dict]) -> AddressFamily:
+        af = AddressFamily(
+            afi = ttp_af['afi'],
+            safi = ttp_af['safi']
+        )
+        for attr in ttp_af['configs']['attrs']:
+            if attr['value'] == 'send-community-ebgp':
+                af.send_community_ebgp = True
+            elif attr['value'] == 'next-hop-self':
+                af.next_hop_self = True
+            elif attr['value'] == 'remove-private-AS':
+                af.remove_private_as = True
+        
+        if 'route-policy' in ttp_af['configs']:
+            policy = ttp_af['configs']['route-policy']
+
+            if 'in' in policy:
+                af.route_policy_in = policy['in']
+            if 'out' in policy:
+                af.route_policy_out = policy['out']
+
+        return af
 
     def translate_node(self) -> None:
         _loopback0 = [
@@ -446,6 +516,19 @@ class XRTranslator:
         for policy in self.ttp_parsed_data["policies"]:
             self.translate_policy(ttp_policy=policy)
 
+        # neighborのコンフィグ配下に記述される設定への対応
+        for neighbor in self.bgp_neighbors:
+            for af in neighbor.address_families:
+                # next-hop-self
+                if af.next_hop_self:
+                    if af.route_policy_out:
+                        export_policy = self.get_policy_by_name(af.route_policy_out)
+                        # すでにnext-hop-selfが反映されたポリシーには追加しない
+                        if not export_policy.has_next_hop_self_in_head():
+                            export_policy.insert_next_hop_self_in_head()
+                    else:
+                        self.logger.info(f"no export policy found: {af}")
+
     def translate_policy(
         self, ttp_policy: dict, parent_conditional_policy: PolicyModel = None
     ) -> Union[list[Statement], None]:
@@ -601,7 +684,7 @@ class XRTranslator:
                 # ---------- then句の組み立て開始(elseif) ----------
 
                 for inner_rule in rule["rules"]:
-                    if "if" in inner_rule.keys() or "elseif" in inner_rule.keys():
+                    if "if" in inner_rule.keys():
                         self.logger.info(f"translate nested if/elseif: {inner_rule}")
 
                         if not statement.is_empty():
@@ -692,7 +775,6 @@ class XRTranslator:
 
         self.logger.info(f"appending policy: {policy}")
         self.policies.append(policy)
-
 
 if __name__ == "__main__":
     ttp_file = sys.argv[1]
