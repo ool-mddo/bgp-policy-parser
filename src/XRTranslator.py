@@ -70,6 +70,7 @@ class PolicyModel:
             )
         )
 
+
 @dataclass
 class AddressFamily:
     afi: str
@@ -118,6 +119,9 @@ class XRTranslator:
         self.translate_community_set()
         self.translate_aspath_set()
         self.translate_prefix_set()
+
+    def auto_gen_ibgp_export(self):
+        self.logger.info(f"##TBD")
 
     def get_policy_by_name(self, name: str) -> Union[PolicyModel, None]:
         result = [p for p in self.policies if p.name == name]
@@ -183,14 +187,6 @@ class XRTranslator:
             afi = ttp_af['afi'],
             safi = ttp_af['safi']
         )
-        for attr in ttp_af['configs']['attrs']:
-            if attr['value'] == 'send-community-ebgp':
-                af.send_community_ebgp = True
-            elif attr['value'] == 'next-hop-self':
-                af.next_hop_self = True
-            elif attr['value'] == 'remove-private-AS':
-                af.remove_private_as = True
-        
         if 'route-policy' in ttp_af['configs']:
             policy = ttp_af['configs']['route-policy']
 
@@ -198,6 +194,18 @@ class XRTranslator:
                 af.route_policy_in = policy['in']
             if 'out' in policy:
                 af.route_policy_out = policy['out']
+                
+        for attr in ttp_af['configs']['attrs']:
+            if attr['value'] == 'send-community-ebgp':
+                af.send_community_ebgp = True
+            elif attr['value'] == 'next-hop-self':
+                af.next_hop_self = True
+                if not 'route-policy' in ttp_af['configs']:
+                    self.logger.info("auto generate ibgp-export: " + str(ttp_af))
+                    af.route_policy_out = "ibgp-export" 
+            elif attr['value'] == 'remove-private-AS':
+                af.remove_private_as = True
+        
 
         return af
 
@@ -522,7 +530,11 @@ class XRTranslator:
                 # next-hop-self
                 if af.next_hop_self:
                     if af.route_policy_out:
+                        if "ibgp-export" in str(af.route_policy_out):
+                            self.logger.info("auto generate af data:"  + str(af) )
+                            self.logger.info("execute auto_gen_ibgp_export:"  + str(self.auto_gen_ibgp_export()) )
                         export_policy = self.get_policy_by_name(af.route_policy_out)
+
                         # すでにnext-hop-selfが反映されたポリシーには追加しない
                         if not export_policy.has_next_hop_self_in_head():
                             export_policy.insert_next_hop_self_in_head()
