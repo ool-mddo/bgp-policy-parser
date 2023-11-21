@@ -65,11 +65,8 @@ class PolicyModel:
         self.statements.insert(0,
             Statement(
                 name='_generated_next-hop-self',
-                conditions=[{ "protocol": "bgp" }],
-                actions=[
-                    { "local-preference": "100" },
-                    { "next-hop": "self" }
-                ]
+                conditions=[],
+                actions=[{ "next-hop": "self" }]
             )
         )
 
@@ -126,7 +123,16 @@ class XRTranslator:
         if not self.get_policy_by_name("ibgp-export"):
             self.logger.info("ibgp-export policy not found.")
             ibgp_export = PolicyModel(name="ibgp-export", statements=[], default={})
-            ibgp_export.insert_next_hop_self_in_head()
+            ibgp_export.statements.append(
+                Statement(
+                    name="_generated_next-hop-self",
+                    conditions=[{ "protocol": "bgp" }],
+                    actions=[
+                        { "local-preference": "100" },
+                        { "next-hop": "self" }
+                    ]
+                )
+            )
             self.policies.append(ibgp_export)
         else:
             self.logger.info("ibgp-export policy found.")
@@ -213,7 +219,6 @@ class XRTranslator:
                     af.route_policy_out = "ibgp-export" 
             elif attr['value'] == 'remove-private-AS':
                 af.remove_private_as = True
-        
 
         return af
 
@@ -544,7 +549,7 @@ class XRTranslator:
                         export_policy = self.get_policy_by_name(af.route_policy_out)
 
                         # すでにnext-hop-selfが反映されたポリシーには追加しない
-                        if not export_policy.has_next_hop_self_in_head():
+                        if export_policy and not export_policy.has_next_hop_self_in_head():
                             export_policy.insert_next_hop_self_in_head()
                     else:
                         self.logger.info(f"no export policy found: {af}")
