@@ -65,11 +65,13 @@ class PolicyModel:
         self.statements.insert(0,
             Statement(
                 name='_generated_next-hop-self',
-                conditions=[],
-                actions=[{ "next-hop": "self" }]
+                conditions=[{ "protocol": "bgp" }],
+                actions=[
+                    { "local-preference": "100" },
+                    { "next-hop": "self" }
+                ]
             )
         )
-
 
 @dataclass
 class AddressFamily:
@@ -121,7 +123,13 @@ class XRTranslator:
         self.translate_prefix_set()
 
     def auto_gen_ibgp_export(self):
-        self.logger.info(f"##TBD")
+        if not self.get_policy_by_name("ibgp-export"):
+            self.logger.info("ibgp-export policy not found.")
+            ibgp_export = PolicyModel(name="ibgp-export", statements=[], default={})
+            ibgp_export.insert_next_hop_self_in_head()
+            self.policies.append(ibgp_export)
+        else:
+            self.logger.info("ibgp-export policy found.")
 
     def get_policy_by_name(self, name: str) -> Union[PolicyModel, None]:
         result = [p for p in self.policies if p.name == name]
@@ -652,8 +660,6 @@ class XRTranslator:
 
             elif rule["if"] == "elseif":
                 self.logger.info(f"'elseif' rule found in {policy.name}: {rule}")
-
-
 
                 # ---------- from句の組み立て開始(elseif) ----------
                 # if文の条件判定を行うためのポリシーを作成
