@@ -24,6 +24,9 @@ def strip_comma(data):
 def strip_squote(data):
     return data.strip("'")
 
+def strip_dquote(data):
+    return data.strip('"')
+
 def to_dict(data):
     key, *value = data.split()
     return {"value": ''.join(value)}
@@ -34,7 +37,7 @@ begin_if = "(if|else|elseif)"
 end_if = "(endif|else|elseif)"
 pass_drop_done = "(pass|drop|done)"
 set_delete = "(set|delete)"
-not_if = "^(pass|drop|done|set|delte|apply).*"
+not_if = "^(pass|drop|done|set|delete|apply).*"
 apply = "apply.*"
 </vars>
 
@@ -123,11 +126,41 @@ route-policy {{ name | _start_ }}
         {{ action | _exact_space_ | re(pass_drop_done) }}
         </group>
       {{ fi | _exact_space_ | re(end_if) | _end_ }}
+
+      ## 3段目のelse
+      <group>
+      {{ if | _exact_space_ | re("else") | _start_ }} 
+        <group name="rules*">
+        {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+        </group>
+        <group name="rules*">
+        {{ action | _exact_space_ | re(apply) }} {{ value }}
+        </group>
+        <group name="rules*">
+        {{ action | _exact_space_ | re(pass_drop_done) }}
+        </group>
       </group>
-    {{ fi | _exact_space_ | re(end_if) | _end_ }}
+
+      {{ fi | _exact_space_ | re("endif") | _end_ }}
+      </group>
+
+    ## 2段目のelse
+    <group>
+    {{ if | _exact_space_ | re("else") | _start_ }} 
+      <group name="rules*">
+      {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+      </group>
+      <group name="rules*">
+      {{ action | _exact_space_ | re(apply) }} {{ value }}
+      </group>
+      <group name="rules*">
+      {{ action | _exact_space_ | re(pass_drop_done) }}
+      </group>
     </group>
-  {{ fi | _exact_space_ | re(end_if) | _end_ }}
-## else
+    {{ fi | _exact_space_ | re("endif") | _end_ }}
+
+    </group>
+  ## 1段目のelse
   <group>
   {{ if | _exact_space_ | re("else") | _start_ }} 
     <group name="rules*">
@@ -139,8 +172,9 @@ route-policy {{ name | _start_ }}
     <group name="rules*">
     {{ action | _exact_space_ | re(pass_drop_done) }}
     </group>
-  {{ fi | _exact_space_ | re("endif") | _end_ }}
   </group>
+
+  {{ fi | _exact_space_ | re("endif") | _end_ }}
   </group>
 
   <group name="rules*">
@@ -156,3 +190,63 @@ route-policy {{ name | _start_ }}
 end-policy
 ! {{ _end_ }}
 </group>
+
+<group name="bgp">
+router bgp {{ asn | _start_ }}
+
+ <group name="confederation">
+ bgp confederation {{ attr  }} {{ value }}
+ </group>
+
+ <group name="router-id">
+ bgp router-id {{ router-id }}
+ </group> 
+
+ <group name="af_{{ afi }}_{{ safi}}">
+ address-family {{ afi | _exact_space_ | _start_ }} {{ safi }}
+  <group name="configs">
+  
+  <group name="route-policy">
+  route-policy {{ in | _exact_space_ }} in
+  route-policy {{ out | _exact_space_ }} out
+  </group>
+
+  <group name="attrs*">
+  {{ value | exclude("!") | _exact_space_ }}
+  </group>
+  
+ </group>
+
+ !{{ _end_ | _exact_space_ }}
+ </group> ## end-af
+
+ <group name="neighbors*">
+ neighbor {{ remote-ip | _exact_space_ | _start_ }}
+
+  remote-as {{ remote-as }}
+  description {{ description | _exact_space_ | _line_ | macro(strip_dquote) }}
+  update-source {{ update-source }}
+
+  <group name="address-families*">
+  address-family {{ afi | _exact_space_ | _start_ }} {{ safi }}
+   <group name="configs">
+   
+   <group name="route-policy">
+   route-policy {{ in | _exact_space_ }} in
+   route-policy {{ out | _exact_space_ }} out
+   </group>
+
+   <group name="attrs*">
+   {{ value | _exact_space_ }}
+   </group>
+
+   </group>
+
+  !{{ _exact_space_ | _end_ }}
+  </group> ## end-af-group
+
+ !{{ _exact_space_ | _end_ }} 
+ </group> ## end-neighbor-group
+
+!{{ _end_ | _exact_space_ }}
+</group> ## end-bgp
