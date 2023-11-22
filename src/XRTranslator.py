@@ -119,6 +119,24 @@ class XRTranslator:
         self.translate_aspath_set()
         self.translate_prefix_set()
 
+    def auto_gen_ibgp_export(self):
+        if not self.get_policy_by_name("ibgp-export"):
+            self.logger.info("ibgp-export policy not found.")
+            ibgp_export = PolicyModel(name="ibgp-export", statements=[], default={"actions": []})
+            ibgp_export.statements.append(
+                Statement(
+                    name="_generated_next-hop-self",
+                    conditions=[{ "protocol": "bgp" }],
+                    actions=[
+                        { "local-preference": "100" },
+                        { "next-hop": "self" }
+                    ]
+                )
+            )
+            self.policies.append(ibgp_export)
+        else:
+            self.logger.info("ibgp-export policy found.")
+
     def get_policy_by_name(self, name: str) -> Union[PolicyModel, None]:
         result = [p for p in self.policies if p.name == name]
         if len(result) == 0:
@@ -183,14 +201,6 @@ class XRTranslator:
             afi = ttp_af['afi'],
             safi = ttp_af['safi']
         )
-        for attr in ttp_af['configs']['attrs']:
-            if attr['value'] == 'send-community-ebgp':
-                af.send_community_ebgp = True
-            elif attr['value'] == 'next-hop-self':
-                af.next_hop_self = True
-            elif attr['value'] == 'remove-private-AS':
-                af.remove_private_as = True
-        
         if 'route-policy' in ttp_af['configs']:
             policy = ttp_af['configs']['route-policy']
 
@@ -198,6 +208,17 @@ class XRTranslator:
                 af.route_policy_in = policy['in']
             if 'out' in policy:
                 af.route_policy_out = policy['out']
+        if 'attrs' in ttp_af['configs']:        
+            for attr in ttp_af['configs']['attrs']:
+                if attr['value'] == 'send-community-ebgp':
+                    af.send_community_ebgp = True
+                elif attr['value'] == 'next-hop-self':
+                    af.next_hop_self = True
+                    if not 'route-policy' in ttp_af['configs']:
+                        self.logger.info("auto generate ibgp-export: " + str(ttp_af))
+                        af.route_policy_out = "ibgp-export" 
+                elif attr['value'] == 'remove-private-AS':
+                    af.remove_private_as = True
 
         return af
 
@@ -522,9 +543,13 @@ class XRTranslator:
                 # next-hop-self
                 if af.next_hop_self:
                     if af.route_policy_out:
+                        if "ibgp-export" in str(af.route_policy_out):
+                            self.logger.info("auto generate af data:"  + str(af) )
+                            self.logger.info("execute auto_gen_ibgp_export:"  + str(self.auto_gen_ibgp_export()) )
                         export_policy = self.get_policy_by_name(af.route_policy_out)
+
                         # すでにnext-hop-selfが反映されたポリシーには追加しない
-                        if not export_policy.has_next_hop_self_in_head():
+                        if export_policy and not export_policy.has_next_hop_self_in_head():
                             export_policy.insert_next_hop_self_in_head()
                     else:
                         self.logger.info(f"no export policy found: {af}")
@@ -640,8 +665,6 @@ class XRTranslator:
 
             elif rule["if"] == "elseif":
                 self.logger.info(f"'elseif' rule found in {policy.name}: {rule}")
-
-
 
                 # ---------- from句の組み立て開始(elseif) ----------
                 # if文の条件判定を行うためのポリシーを作成
