@@ -122,7 +122,7 @@ class XRTranslator:
     def auto_gen_ibgp_export(self):
         if not self.get_policy_by_name("ibgp-export"):
             self.logger.info("ibgp-export policy not found.")
-            ibgp_export = PolicyModel(name="ibgp-export", statements=[], default={"actions": []})
+            ibgp_export = PolicyModel(name="ibgp-export", statements=[], default={})
             ibgp_export.statements.append(
                 Statement(
                     name="_generated_next-hop-self",

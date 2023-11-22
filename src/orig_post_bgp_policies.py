@@ -6,6 +6,7 @@ import re
 import requests
 from typing import List, Dict
 
+
 BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_output")
 MODEL_CONDUCTOR_HOST = os.environ.get("MODEL_CONDUCTOR_HOST", "model-conductor:9292")
 
@@ -34,8 +35,7 @@ def _convert_policy(bgp_policy: Dict) -> Dict:
     Returns:
         Dict: A BGP policy (node-attribute patch format)
     """
-    # patches for node attribute
-    node_patches = {
+    return {
         "node-id": re.sub(r"/\d+$", "", bgp_policy["node"]),
         "mddo-topology:bgp-proc-node-attributes": {
             "policy": bgp_policy["policies"],
@@ -44,41 +44,6 @@ def _convert_policy(bgp_policy: Dict) -> Dict:
             "community-set": bgp_policy["community-set"],
         },
     }
-    if "bgp_neighbors" not in bgp_policy:
-        return node_patches
-
-    # patches for term-point attribute
-    tp_patches = []
-    for bgp_neighbor in bgp_policy["bgp_neighbors"]:
-        af_key = "address_families"  # alias
-        af_data = next(
-            (
-                af
-                for af in bgp_neighbor[af_key]
-                if af["afi"] == "ipv4" and af["next_hop_self"] is True
-            ),
-            None,
-        )
-        if not af_data:
-            continue
-
-        in_out_policy_patch = {}
-        if af_data["route_policy_in"] != "":
-            in_out_policy_patch["import-policy"] = [af_data["route_policy_in"]]
-        if af_data["route_policy_out"] != "":
-            in_out_policy_patch["export-policy"] = [af_data["route_policy_out"]]
-
-         
-        if "ibgp-export" in af_data["route_policy_out"]:
-            print(f"# DEBUG: af_data: ", af_data)
-            tp_patch = {
-                "tp-id": f"peer_{bgp_neighbor['remote_ip']}",
-                "mddo-topology:bgp-proc-termination-point-attributes": in_out_policy_patch,
-            }
-            tp_patches.append(tp_patch)
-
-    node_patches["ietf-network-topology:termination-point"] = tp_patches
-    return node_patches
 
 
 def _pack_policies(bgp_policies: List) -> Dict:
