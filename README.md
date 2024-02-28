@@ -5,10 +5,7 @@
 - Juniper Junos OS
 - Cisco IOS-XR
 
-# 使い方
-使用方法としてはスクリプト単体での実行とAPIによる実行の2種類があります。
-
-## スクリプト
+# 使用法
 
 1. configsディレクトリにデバイスのコンフィグを配置
 
@@ -76,6 +73,3 @@ policy_model_output
         ├── Edge-TK02
         └── Edge-TK03
 ```
-
-## API
-
