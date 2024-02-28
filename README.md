@@ -5,38 +5,59 @@
 - Juniper Junos OS
 - Cisco IOS-XR
 
-# 使用法
+# 使用方法
 
-1. configsディレクトリにデバイスのコンフィグを配置
+1. 各種ファイルの配置
 
-以下のディレクトリ構成でパース対象のコンフィグファイルを配置してください。
-- Junosのコンフィグ  -> configs/mddo/original_asis/juniper/
-- IOS-XRのコンフィグ -> configs/mddo/original_asis/xr/
+以下のような構造でコンフィグを配置してください。
 
-例として以下のようなファイル配置を取るとします。
+```
+configs/<network>/<snapshot>/configs/<コンフィグファイル>
+```
+
+`network`と`snapshot`は任意の値を指定してください。
+
+例えば`network`に`mddo`、`snapshot`に`original_asis`と指定して、JunosとIOS-XRのコンフィグを配置する場合は以下のような配置になります。
 
 ```
 configs
 └── mddo
     └── original_asis
-        ├── cisco_ios_xr
-        │   └── Edge-TK03
-        └── juniper
+        └── configs
             ├── Core-TK01
             ├── Core-TK02
             ├── Edge-TK01
-            └── Edge-TK02
+            ├── Edge-TK02
+            └── Edge-TK03
 ```
 
-`configs`直下のディレクトリ名は任意の物を使用してください。ここでは`mddo`としています。
+また、この各種ファイルのOSタイプを示すために`queries/<network>/<snapshot>/node_prop.csv`に、以下のようにノードとOSタイプの対応を記載したファイルを作成してください。
+
+```csv
+Node,Configuration_Format
+Core-TK01,JUNIPER
+Core-TK02,JUNIPER
+Edge-TK01,JUNIPER
+Edge-TK02,JUNIPER
+Edge-TK03,CISCO_IOS_XR
+```
 
 2. スクリプトを実行
 
-`--network`という引数には`configs`直下に作成したディレクトリの名前を指定します。
+コンフィグファイルをOSごとに分けるスクリプトを実行します。ここでは引数に上記で指定した`network`と`snapshot`を指定します。
 
 ```sh
-$ python src/parse_bgp_policy.py --network mddo
+$ python src/collect_configs.py --network mddo --snapshot original_asis
 ```
+
+これによって`configs/mddo/original_asis/configs/`配下にOSタイプごとにコンフィグファイルが配置されます。
+
+次に変換スクリプトを実行します。
+```sh
+$ python src/parse_bgp_policy.py --network mddo --snapshot original_asis
+```
+
+これによってTTPによってパースした結果と共通のポリシーモデルに変換した結果がファイルとして出力されます。
 
 3. 出力を確認
 
@@ -73,3 +94,30 @@ policy_model_output
         ├── Edge-TK02
         └── Edge-TK03
 ```
+
+# APIによる実行
+
+上記の処理はAPIによる実行も可能です。これは[app.py](./src/app.py)によって提供されます。
+配置するファイルは前述のスクリプトの実行時と変わりません。
+
+使用するにはまずAPIサーバを立ち上げます。
+
+```sh
+$ python src/app.py
+```
+
+次に以下のエンドポイントを叩きます。`network`と`snapshot`は配置したコンフィグの場所によって変更してください。
+
+```
+POST /bgp_policy/<network>/<snapshot>/parsed_result
+```
+
+たとえば前述のコンフィグファイルをパースする場合は以下の様に実行します。
+
+```
+curl -s -X POST -H "Content-Type: application/json" \
+    -d '{}' \
+    "http://localhost:5000/bgp_policy/mddo/original_asis/parsed_result"
+```
+
+これによって、スクリプトを実行したときと同じように、`ttp_output`にはパース結果、`policy_model_output`には変換結果が出力されます。
