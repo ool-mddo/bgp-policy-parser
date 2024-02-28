@@ -17,7 +17,7 @@ configs/<network>/<snapshot>/configs/<コンフィグファイル>
 
 `network`と`snapshot`は任意の値を指定してください。
 
-例えば`network`に`mddo`、`snapshot`に`original_asis`と指定して、JunosとIOS-XRのコンフィグを配置する場合は以下のような配置になります。
+例えば`network`に`mddo`、`snapshot`に`original_asis`と指定してコンフィグを配置する場合、以下のようになります。
 
 ```
 configs
