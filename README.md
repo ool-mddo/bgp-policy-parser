@@ -42,7 +42,7 @@ $ python src/parse_bgp_policy.py --network mddo
 
 スクリプトの実行によって複数のディレクトリにファイルが出力されます。
 
-### `ttp_output`
+## `ttp_output`
 
 `ttp_output`ディレクトリにはTTPでパースした結果がJSONファイルとして出力されます。ここで出力されるものは単純にコンフィグをパースしたものなので、OSごとに異なる構造を持っています。
 
@@ -59,7 +59,7 @@ ttp_output
             └── Edge-TK02.json
 ```
 
-### `policy_model_output`
+## `policy_model_output`
 
 `policy_model_output`には上記の出力ファイルからポリシーモデルに変換したものがJSONファイルとして出力されます。これはOS非依存な構造を持っています。
 
