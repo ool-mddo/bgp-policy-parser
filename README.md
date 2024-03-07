@@ -1,11 +1,17 @@
 # bgp-policy-parser
 ネットワーク機器のコンフィグからBGPポリシーの設定を読み取り、共通のモデルとして出力するためのツールです。
 
+[playground](https://github.com/ool-mddo/playground)で実機のコンフィグからOS非依存なコンフィグデータを生成するために使用しています。
+
 対応しているOSは以下の通りです。
 - Juniper Junos OS
 - Cisco IOS-XR
 
 # 使用方法
+
+> [!NOTE]
+> このツールは[playgroundのシステム](https://github.com/ool-mddo/playground/blob/main/doc/system_architecture.md)に組み込んで使用することを想定しています。
+> 以下の手順では、本来はシステムによって生成されるBatfishの出力ファイルを手動で作成することによって、このツール単体で使用する場合の手順を書いています。
 
 1. 各種ファイルの配置
 
