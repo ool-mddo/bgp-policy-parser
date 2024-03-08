@@ -1,17 +1,19 @@
 # bgp-policy-parser
 ネットワーク機器のコンフィグからBGPポリシーの設定を読み取り、共通のモデルとして出力するためのツールです。
 
-[playground](https://github.com/ool-mddo/playground)で実機のコンフィグからOS非依存なコンフィグデータを生成するために使用しています。
-
 対応しているOSは以下の通りです。
 - Juniper Junos OS
 - Cisco IOS-XR
 
-# 使用方法
+# playgroundにおける役割
+
+このツールは[playground](https://github.com/ool-mddo/playground)のシステムにおいて、実機のコンフィグからOS非依存なコンフィグデータを生成するために使用しています。
+
+# ツール単体での使用方法
 
 > [!NOTE]
 > このツールは[playgroundのシステム](https://github.com/ool-mddo/playground/blob/main/doc/system_architecture.md)に組み込んで使用することを想定しています。
-> 以下の手順では、本来はシステムによって生成されるBatfishの出力ファイルを手動で作成することによって、このツール単体で使用する場合の手順を書いています。
+> 以下の手順では、本来はシステムによって生成されるファイルを手動で作成することによって、このツール単体で使用する場合の手順を書いています。
 
 1. 各種ファイルの配置
 
@@ -38,6 +40,9 @@ configs
 ```
 
 また、この各種ファイルのOSタイプを示すために`queries/<network>/<snapshot>/node_prop.csv`に、以下のようにノードとOSタイプの対応を記載したファイルを作成してください。
+
+> [!NOTE]
+> 本来はBatfishから生成されるものですが、ここでは本ツールの単体実行を想定して手動で作成します。
 
 ```csv
 Node,Configuration_Format
