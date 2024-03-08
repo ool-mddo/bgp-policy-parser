@@ -7,7 +7,7 @@
 
 # playgroundにおける役割
 
-このツールは[playground](https://github.com/ool-mddo/playground)のシステムにおいて、実機のコンフィグからOS非依存なコンフィグデータを生成するために使用しています。
+このツールは[playground](https://github.com/ool-mddo/playground)のシステムにおいて、実機のコンフィグからOS非依存なBGPポリシーのコンフィグデータを生成するために使用しています。
 
 # ツール単体での使用方法
 
