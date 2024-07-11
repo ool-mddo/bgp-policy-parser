@@ -114,6 +114,176 @@ def _parse_files(network: str, snapshot: str, os_type: str) -> None:
             parsed = _ttp_parse(config_txt, os_type)
         _save_parsed_result(network, snapshot, os_type, config_file, parsed)
 
+def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
+    """Convert parsed juniper policy to policy model
+    Args:
+        ttp_output (dict): Policy data parsed by TTP 
+    Returns:
+        dict: Policy model data
+    """
+
+    policy_model = {
+        "node": "",
+        "prefix-set": [],
+        "as-path-set": [],
+        "community-set": [],
+        "policies": []
+    }
+
+    # node
+    for item in ttp_output["interfaces"]:
+        if item["name"] == "lo0":
+            policy_model["node"] = item["address"]
+
+    # prefix-set
+    if "prefix-sets" in ttp_output.keys():
+        for item in ttp_output["prefix-sets"]:
+            policy_model["prefix-set"].append(item)
+    else:
+        logger.info(f"prefix-set not found")
+
+    # as-path-set
+    if "aspath-sets" in ttp_output.keys():
+        for item in ttp_output["aspath-sets"]:
+            policy_model["as-path-set"].append(item)
+    else:
+        logger.info(f"as-path-set not found")
+
+    # community-set
+    if "community-sets" in ttp_output.keys():
+        for item in ttp_output["community-sets"]:
+            data = {
+                "name": item["community"],
+                "communities": [
+                    {"community": member} for member in item["members"].split()
+                ],
+            }
+            policy_model["community-set"].append(data)
+    else:
+        logger.info(f"community-set not found")
+
+    # policies
+    if "policies" not in ttp_output:
+        logger.info(f"policy not found")
+        return policy_model
+
+    for item in ttp_output["policies"]:
+        statements = list()
+
+        if "statements" not in item.keys():
+            logger.info(f"statements not found in {item['name']}")
+            if "default" in item.keys():
+                default = {"actions": item["default"]["actions"]}
+                data = {
+                    "name": item["name"],
+                    "statements": "none",
+                    "default": default,
+                }
+                policy_model["policies"].append(data)
+            continue
+
+        for name, statement in item["statements"].items():
+            conditions = []
+            actions = []
+            for rule in statement:
+                if "actions" in rule:
+                    actions.extend(rule["actions"])
+                elif "conditions" in rule:
+                    conditions.extend(rule["conditions"])
+                else:
+                    logger.debug(f"# NO RULE MATCHED: {rule}")
+
+            for i, condition in enumerate(conditions):
+                logger.debug(f"  - condition : {condition}")
+                if "route-filter" in condition.keys():
+                    prefix, *match_type_elem = condition["route-filter"].split()
+                    logger.debug(
+                        f"    - match_type_elem length: {len(match_type_elem)}"
+                    )
+                    # exact
+                    if len(match_type_elem) == 1:
+                        # exact
+                        length = dict()
+                        match_type = match_type_elem[0]
+                    elif len(match_type_elem) == 2:
+                        if match_type_elem[0] == "prefix-length-range":
+                            # ex. prefix-length-range /25-/27 -> {"min": 25, "max": 27}
+                            min_length, max_length = [
+                                x.lstrip("/") for x in match_type_elem[1].split("-")
+                            ]
+                            length = {"max": max_length, "min": min_length}
+                        elif match_type_elem[0] == "upto":
+                            # ex. upto /24 -> {"max": 24}
+                            length = {"max": match_type_elem[1].lstrip("/")}
+                        match_type = match_type_elem[0]
+
+                    conditions[i] = {
+                        "route-filter": {
+                            "prefix": prefix,
+                            "length": length,
+                            "match-type": match_type,
+                        }
+                    }
+
+                if "prefix-list-filter" in condition.keys():
+                    prefix_list, match_type = condition[
+                        "prefix-list-filter"
+                    ].split()
+
+                    conditions[i] = {
+                        "prefix-list-filter": {
+                            "prefix-list": prefix_list,
+                            "match-type": match_type,
+                        }
+                    }
+
+                if "community" in condition.keys():
+                    communities = (
+                        condition["community"].strip("[").strip("]").split()
+                    )
+
+                    conditions[i] = {"community": communities}
+
+            for i, action in enumerate(actions):
+                tmpactions = {}
+                if "as-path-prepend" in action.keys():
+                    # logger.debug(f"as-path-prepend:::: " + str(action))
+                    asn = action["as-path-prepend"].split()
+
+                    tmpactions.update({"as-path-prepend": {"asn": asn}})
+                    # conditions[i] = {"as-path-prepend": {"asn": asn}}
+
+                if "community" in action.keys():
+                    # logger.debug(f"community:::: " + str(action))
+                    community_action, community_name = action["community"].split()
+
+                    tmpactions.update(
+                        {
+                            "community": {
+                                "action": community_action,
+                                "name": community_name,
+                            }
+                        }
+                    )
+                actions[i].update(tmpactions)
+
+            statement_data = {
+                "name": name,
+                "if": "if",
+                "conditions": conditions,
+                "actions": actions,
+            }
+            statements.append(statement_data)
+
+        if "default" not in item:
+            default = {"actions": []}
+        else:
+            default = {"actions": item["default"]["actions"]}
+
+        data = {"name": item["name"], "statements": statements, "default": default}
+        policy_model["policies"].append(data)
+    
+    return policy_model
 
 def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
     """
@@ -128,174 +298,19 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
     junos_ttp_outputs_dir = os.path.join(TTP_OUTPUTS_DIR, network, snapshot, "juniper")
     junos_ttp_outputs = glob.glob(os.path.join(junos_ttp_outputs_dir, "*"))
 
-    for junos_output_file in junos_ttp_outputs:
-        logger.info(f"- target: {junos_output_file}")
-
-        with open(junos_output_file, "r") as f:
+    for ttp_output_file in junos_ttp_outputs:
+        with open(ttp_output_file, "r") as f:
             data = json.load(f)
-            if any(data[0][0]) is False:
-                logger.info("parse result is empty (it seems non-bgp-speaker)")
-                continue
-            result = data[0][0][0]
+        if any(data[0][0]) is False:
+            logger.info("parse result is empty (it seems non-bgp-speaker)")
+            return None
+        ttp_output = data[0][0][0]
 
-        with open(os.path.join(SRC_DIR, "policy_model.json"), "r") as f:
-            template = json.load(f)
+        logger.info(f"- target: {ttp_output_file}")
 
-        # node
-        for item in result["interfaces"]:
-            if item["name"] == "lo0":
-                template["node"] = item["address"]
+        policy_model = _convert_juniper_ttp_to_policy_model(ttp_output)
 
-        # prefix-set
-        if "prefix-sets" in result.keys():
-            for item in result["prefix-sets"]:
-                template["prefix-set"].append(item)
-        else:
-            logger.info(f"prefix-set not found in {junos_output_file}")
-
-        # as-path-set
-        if "aspath-sets" in result.keys():
-            for item in result["aspath-sets"]:
-                template["as-path-set"].append(item)
-        else:
-            logger.info(f"as-path-set not found in {junos_output_file}")
-
-        # community-set
-        if "community-sets" in result.keys():
-            for item in result["community-sets"]:
-                data = {
-                    "name": item["community"],
-                    "communities": [
-                        {"community": member} for member in item["members"].split()
-                    ],
-                }
-                template["community-set"].append(data)
-        else:
-            logger.info(f"community-set not found in {junos_output_file}")
-
-        # policies
-        if "policies" not in result:
-            logger.info(f"policy not found in {junos_output_file}")
-            continue
-
-        for item in result["policies"]:
-            statements = list()
-
-            if "statements" not in item.keys():
-                logger.info(f"statements not found in {item['name']}")
-                if "default" in item.keys():
-                    default = {"actions": item["default"]["actions"]}
-                    data = {
-                        "name": item["name"],
-                        "statements": "none",
-                        "default": default,
-                    }
-                    template["policies"].append(data)
-                continue
-
-            for name, statement in item["statements"].items():
-                conditions = []
-                actions = []
-                for rule in statement:
-                    if "actions" in rule:
-                        actions.extend(rule["actions"])
-                    elif "conditions" in rule:
-                        conditions.extend(rule["conditions"])
-                    else:
-                        logger.debug(f"# NO RULE MATCHED: {rule}")
-
-                for i, condition in enumerate(conditions):
-                    logger.debug(f"  - condition : {condition}")
-                    if "route-filter" in condition.keys():
-                        prefix, *match_type_elem = condition["route-filter"].split()
-                        logger.debug(
-                            f"    - match_type_elem length: {len(match_type_elem)}"
-                        )
-                        # exact
-                        if len(match_type_elem) == 1:
-                            # exact
-                            length = dict()
-                            match_type = match_type_elem[0]
-                        elif len(match_type_elem) == 2:
-                            if match_type_elem[0] == "prefix-length-range":
-                                # ex. prefix-length-range /25-/27 -> {"min": 25, "max": 27}
-                                min_length, max_length = [
-                                    x.lstrip("/") for x in match_type_elem[1].split("-")
-                                ]
-                                length = {"max": max_length, "min": min_length}
-                            elif match_type_elem[0] == "upto":
-                                # ex. upto /24 -> {"max": 24}
-                                length = {"max": match_type_elem[1].lstrip("/")}
-                            match_type = match_type_elem[0]
-
-                        conditions[i] = {
-                            "route-filter": {
-                                "prefix": prefix,
-                                "length": length,
-                                "match-type": match_type,
-                            }
-                        }
-
-                    if "prefix-list-filter" in condition.keys():
-                        prefix_list, match_type = condition[
-                            "prefix-list-filter"
-                        ].split()
-
-                        conditions[i] = {
-                            "prefix-list-filter": {
-                                "prefix-list": prefix_list,
-                                "match-type": match_type,
-                            }
-                        }
-
-                    if "community" in condition.keys():
-                        communities = (
-                            condition["community"].strip("[").strip("]").split()
-                        )
-
-                        conditions[i] = {"community": communities}
-
-                for i, action in enumerate(actions):
-                    tmpactions = {}
-                    if "as-path-prepend" in action.keys():
-                        # logger.debug(f"as-path-prepend:::: " + str(action))
-                        asn = action["as-path-prepend"].split()
-
-                        tmpactions.update({"as-path-prepend": {"asn": asn}})
-                        # conditions[i] = {"as-path-prepend": {"asn": asn}}
-
-                    if "community" in action.keys():
-                        # logger.debug(f"community:::: " + str(action))
-                        community_action, community_name = action["community"].split()
-
-                        tmpactions.update(
-                            {
-                                "community": {
-                                    "action": community_action,
-                                    "name": community_name,
-                                }
-                            }
-                        )
-                    actions[i].update(tmpactions)
-
-                statement_data = {
-                    "name": name,
-                    "if": "if",
-                    "conditions": conditions,
-                    "actions": actions,
-                }
-                statements.append(statement_data)
-
-            if "default" not in item:
-                default = {"actions": []}
-            else:
-                default = {"actions": item["default"]["actions"]}
-
-            data = {"name": item["name"], "statements": statements, "default": default}
-            template["policies"].append(data)
-
-        _save_policy_model_output(network, snapshot, junos_output_file, template)
-
+        _save_policy_model_output(network, snapshot, ttp_output_file, policy_model)
 
 def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
     """
