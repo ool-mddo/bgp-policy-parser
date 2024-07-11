@@ -103,9 +103,9 @@ def _parse_files(network: str, snapshot: str, os_type: str) -> None:
     config_dir = os.path.join(TTP_CONFIGS_DIR, network, snapshot, os_type)
     if not os.path.isdir(config_dir):
         logger.info(
-            f"Error: config dir:{config_dir} for os_type:{os_type} is not found"
+            f"config dir:{config_dir} for os_type:{os_type} is not found"
         )
-        sys.exit(1)
+        return
 
     config_files = glob.glob(os.path.join(config_dir, "*"))
     for config_file in config_files:
