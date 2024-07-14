@@ -46,6 +46,28 @@ def _ttp_parse(text: str, os_type: str) -> List:
     return parser.result()
 
 
+def _file_basename(orig_file_name: str) -> str:
+    file_name = os.path.basename(orig_file_name)
+    file_name_wo_ext = file_name
+    file_name_tokens = os.path.splitext(file_name)
+    if file_name_tokens[-1] in [".txt", ".conf", ".json"]:
+        file_name_wo_ext = file_name_tokens[0]
+
+    return file_name_wo_ext
+
+
+def _save_file(save_dir: str, file_name: str, data: List | Dict, use_pmenc: bool = False) -> None:
+    os.makedirs(save_dir, exist_ok=True)
+    file_name_wo_ext = _file_basename(file_name)
+    save_file = os.path.join(save_dir, f"{file_name_wo_ext}.json")
+    logger.info(f"Save file: {save_file}")
+    with open(save_file, "w", encoding="utf-8") as f:
+        if use_pmenc:
+            f.write(json.dumps(data, indent=2, cls=PMEncoder))
+        else:
+            f.write(json.dumps(data, indent=2))
+
+
 def _save_parsed_result(network: str, snapshot: str, os_type: str, config_file: str, parser_result: List) -> None:
     """Save parsed result
     Args:
@@ -57,14 +79,8 @@ def _save_parsed_result(network: str, snapshot: str, os_type: str, config_file: 
     Returns:
         None
     """
-    file_name = os.path.basename(config_file)
-    file_name_wo_ext = os.path.splitext(file_name)[0]
     save_dir = os.path.join(TTP_OUTPUTS_DIR, network, snapshot, os_type)
-    os.makedirs(save_dir, exist_ok=True)
-    save_file = os.path.join(save_dir, f"{file_name_wo_ext}.json")
-    logger.info(f"parse result saved: {save_file}")
-    with open(save_file, "w", encoding="utf-8") as f:
-        f.write(json.dumps(parser_result, indent=2))
+    _save_file(save_dir, config_file, parser_result)
 
 
 def _save_policy_model_output(network: str, snapshot: str, ttp_result_file: str, model_output: Dict) -> None:
@@ -77,14 +93,8 @@ def _save_policy_model_output(network: str, snapshot: str, ttp_result_file: str,
     Returns:
         None
     """
-    file_name = os.path.basename(ttp_result_file)
-    file_name_wo_ext = os.path.splitext(file_name)[0]
     save_dir = os.path.join(BGP_POLICIES_DIR, network, snapshot)
-    os.makedirs(save_dir, exist_ok=True)
-    save_file = os.path.join(save_dir, file_name_wo_ext)
-    logger.info(f"bgp policy saved: {save_file}")
-    with open(save_file, "w", encoding="utf-8") as f:
-        f.write(json.dumps(model_output, indent=2, cls=PMEncoder))
+    _save_file(save_dir, ttp_result_file, model_output, use_pmenc=True)
 
 
 def _parse_files(network: str, snapshot: str, os_type: str) -> None:
