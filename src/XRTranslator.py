@@ -1,8 +1,8 @@
-import json, sys
-from sys import stderr, stdout
+import json
+from sys import stdout, argv
 from logging import getLogger, StreamHandler, Formatter, INFO, FileHandler, DEBUG
 from dataclasses import dataclass, field, asdict, is_dataclass
-from typing import Union, Self, Callable
+from typing import Union, Self
 from enum import Enum
 
 
@@ -17,6 +17,7 @@ class PMEncoder(json.JSONEncoder):
             return asdict(data)
         return json.JSONEncoder.default(self, data)
 
+
 @dataclass
 class Statement:
     name: str = ""
@@ -24,15 +25,13 @@ class Statement:
     actions: list[dict] = field(default_factory=list)
 
     def is_empty(self) -> bool:
-        if len(self.actions) == 0:
-            return True
-        else:
-            return False
+        return len(self.actions) == 0
 
     @staticmethod
     def generate_empty_statement() -> Self:
         return Statement(name="", conditions=[], actions=[])
-        
+
+
 @dataclass
 class PolicyModel:
     name: str = ""
@@ -56,19 +55,13 @@ class PolicyModel:
         )
 
     def has_next_hop_self_in_head(self) -> bool:
-        if self.statements[0].name == '_generated_next-hop-self':
-            return True
-        else:
-            return False
+        return self.statements[0].name == "_generated_next-hop-self"
 
     def insert_next_hop_self_in_head(self):
-        self.statements.insert(0,
-            Statement(
-                name='_generated_next-hop-self',
-                conditions=[],
-                actions=[{ "next-hop": "self" }]
-            )
+        self.statements.insert(
+            0, Statement(name="_generated_next-hop-self", conditions=[], actions=[{"next-hop": "self"}])
         )
+
 
 @dataclass
 class AddressFamily:
@@ -80,14 +73,16 @@ class AddressFamily:
     route_policy_in: str = ""
     route_policy_out: str = ""
 
+
 @dataclass
 class BGPNeighbor:
     remote_as: int
     remote_ip: str
     address_families: list[AddressFamily] = field(default_factory=list)
 
+
 class XRTranslator:
-    def __init__(self):
+    def __init__(self, ttp_parsed_data: dict):
         self.logger = getLogger("xr")
         self.logger.setLevel(DEBUG)
         formatter = Formatter("[{asctime} @{funcName}-{lineno}] {message}", style="{")
@@ -103,7 +98,6 @@ class XRTranslator:
         fh.setLevel(DEBUG)
         self.logger.addHandler(fh)
 
-    def load_ttp_parsed_config(self, ttp_parsed_data: dict):
         self.node = ""
         self.community_set = []
         self.aspath_set = []
@@ -126,11 +120,8 @@ class XRTranslator:
             ibgp_export.statements.append(
                 Statement(
                     name="_generated_next-hop-self",
-                    conditions=[{ "protocol": "bgp" }],
-                    actions=[
-                        { "local-preference": "100" },
-                        { "next-hop": "self" }
-                    ]
+                    conditions=[{"protocol": "bgp"}],
+                    actions=[{"local-preference": "100"}, {"next-hop": "self"}],
                 )
             )
             self.policies.append(ibgp_export)
@@ -154,8 +145,7 @@ class XRTranslator:
 
         if policy.name.startswith(PolicyPrefix.IF_CONDITION.value):
             opposite_policy_name = policy.name.replace(
-                PolicyPrefix.IF_CONDITION.value, 
-                maps[PolicyPrefix.IF_CONDITION].value
+                PolicyPrefix.IF_CONDITION.value, maps[PolicyPrefix.IF_CONDITION].value
             )
         elif policy.name.startswith(PolicyPrefix.NOT_IF_CONDITION.value):
             opposite_policy_name = policy.name.replace(
@@ -167,14 +157,12 @@ class XRTranslator:
             opposite_policy_name = None
 
         if opposite_policy_name:
-            self.logger.info(
-                f"opposite policy for '{policy}' is '{opposite_policy_name}'"
-            )
+            self.logger.info(f"opposite policy for '{policy}' is '{opposite_policy_name}'")
             opposite_policy = self.get_policy_by_name(opposite_policy_name)
             return opposite_policy
-        else:
-            self.logger.info(f"opposite policy for '{policy}' not found")
-            return None
+
+        self.logger.info(f"opposite policy for '{policy}' not found")
+        return None
 
     def update_policy(self, policy: PolicyModel):
         name = policy.name
@@ -183,50 +171,42 @@ class XRTranslator:
         self.policies[target_index] = policy
 
     def translate_bgp_neighbors(self) -> None:
-        for ttp_neighbor in self.ttp_parsed_data['bgp']['neighbors']:
-            self.logger.info(f'translate bgp neighbo: {ttp_neighbor}')
-            neighbor = BGPNeighbor(
-                remote_as = ttp_neighbor['remote-as'],
-                remote_ip = ttp_neighbor['remote-ip']
-            )
-            for ttp_af in ttp_neighbor['address-families']:
-                af = self.translate_af(ttp_af) 
-                neighbor.address_families.append(af) 
-            
-            self.logger.info(f'appen neighbor; {neighbor}')
+        for ttp_neighbor in self.ttp_parsed_data["bgp"]["neighbors"]:
+            self.logger.info(f"translate bgp neighbor: {ttp_neighbor}")
+            neighbor = BGPNeighbor(remote_as=ttp_neighbor["remote-as"], remote_ip=ttp_neighbor["remote-ip"])
+            for ttp_af in ttp_neighbor["address-families"]:
+                af = self.translate_af(ttp_af)
+                neighbor.address_families.append(af)
+
+            self.logger.info(f"appen neighbor; {neighbor}")
             self.bgp_neighbors.append(neighbor)
 
     def translate_af(self, ttp_af: [dict]) -> AddressFamily:
-        af = AddressFamily(
-            afi = ttp_af['afi'],
-            safi = ttp_af['safi']
-        )
-        if 'route-policy' in ttp_af['configs']:
-            policy = ttp_af['configs']['route-policy']
+        af = AddressFamily(afi=ttp_af["afi"], safi=ttp_af["safi"])
+        if "route-policy" in ttp_af["configs"]:
+            policy = ttp_af["configs"]["route-policy"]
 
-            if 'in' in policy:
-                af.route_policy_in = policy['in']
-            if 'out' in policy:
-                af.route_policy_out = policy['out']
-        if 'attrs' in ttp_af['configs']:        
-            for attr in ttp_af['configs']['attrs']:
-                if attr['value'] == 'send-community-ebgp':
+            if "in" in policy:
+                af.route_policy_in = policy["in"]
+            if "out" in policy:
+                af.route_policy_out = policy["out"]
+        if "attrs" in ttp_af["configs"]:
+            for attr in ttp_af["configs"]["attrs"]:
+                if attr["value"] == "send-community-ebgp":
                     af.send_community_ebgp = True
-                elif attr['value'] == 'next-hop-self':
+                elif attr["value"] == "next-hop-self":
                     af.next_hop_self = True
-                    if not 'route-policy' in ttp_af['configs']:
-                        self.logger.info("auto generate ibgp-export: " + str(ttp_af))
-                        af.route_policy_out = "ibgp-export" 
-                elif attr['value'] == 'remove-private-AS':
+                    if "route-policy" not in ttp_af["configs"]:
+                        self.logger.info(f"auto generate ibgp-export: {str(ttp_af)}")
+                        af.route_policy_out = "ibgp-export"
+                elif attr["value"] == "remove-private-AS":
                     af.remove_private_as = True
 
         return af
 
     def translate_node(self) -> None:
         _loopback0 = [
-            interface
-            for interface in self.ttp_parsed_data["interfaces"]
-            if interface["name"] == "Loopback0"
+            interface for interface in self.ttp_parsed_data["interfaces"] if interface["name"] == "Loopback0"
         ]
 
         if not _loopback0:
@@ -236,7 +216,7 @@ class XRTranslator:
         loopback0: dict = _loopback0[0]
 
         if "ipv4" not in loopback0.keys():
-            self.logger.info(f"ipv4 address not found.")
+            self.logger.info("ipv4 address not found.")
             return
 
         self.logger.info(f"-- node: {loopback0['ipv4']['address']}")
@@ -274,19 +254,13 @@ class XRTranslator:
 
             for aspath_condition in aspath_obj["conditions"]:
                 if "pattern" in aspath_condition.keys():
-                    aspath_data["as-path"]["pattern"] = self.translate_aspath_pattern(
-                        aspath_condition["pattern"]
-                    )
+                    aspath_data["as-path"]["pattern"] = self.translate_aspath_pattern(aspath_condition["pattern"])
 
                 if "length" in aspath_condition.keys():
                     if aspath_condition["condition"] == "le":
-                        aspath_data["as-path"]["length"] = {
-                            "max": aspath_condition["length"]
-                        }
+                        aspath_data["as-path"]["length"] = {"max": aspath_condition["length"]}
                     elif aspath_condition["condition"] == "ge":
-                        aspath_data["as-path"]["length"] = {
-                            "min": aspath_condition["length"]
-                        }
+                        aspath_data["as-path"]["length"] = {"min": aspath_condition["length"]}
             self.aspath_set.append(aspath_data)
 
     def translate_aspath_pattern(self, pattern: str) -> str:
@@ -312,6 +286,7 @@ class XRTranslator:
                     prefix_length = prefix_obj["prefix"].split("/")[-1]
 
                     length = {}
+                    match_type = ""
 
                     if "condition" in prefix_obj.keys():
                         conditions = prefix_obj["condition"].split()
@@ -348,6 +323,7 @@ class XRTranslator:
 
     def translate_rule(self, rule: dict) -> dict:
         self.logger.info(f"translate rule: {rule}")
+        action = {}
         if rule["action"] == "set":
             attr = rule["attr"]
             if attr == "med":
@@ -409,7 +385,7 @@ class XRTranslator:
             return condition
 
         # as-path in as-path-set
-        elif match.split()[0] == "as-path":
+        if match.split()[0] == "as-path":
             if "length" in match:
                 name = match.replace(" ", "_")
                 op = "max" if "le" in match.split() else "min"
@@ -424,23 +400,21 @@ class XRTranslator:
                 )
                 condition.append({"as-path-group": f"_generated_{name}"})
                 return condition
-            else:
-                as_path_group_item = {"as-path-group": match.split()[-1]}
-                condition.append(as_path_group_item)
-                return condition
+
+            as_path_group_item = {"as-path-group": match.split()[-1]}
+            condition.append(as_path_group_item)
+            return condition
 
         # community match-any community-set
-        elif match.split()[0] == "community":
+        if match.split()[0] == "community":
             _, op, community = match.split()
             if op == "matches-any":
                 condition.append({"community": [community]})
                 return condition
-            elif op == "matches-every":
+            if op == "matches-every":
                 self.logger.info("matches-every is not implemented")
 
-    def generate_conditional_policies(
-        self, basename: str, if_condition: dict
-    ) -> list[PolicyModel]:
+    def generate_conditional_policies(self, basename: str, if_condition: dict) -> list[PolicyModel]:
         if if_condition["op"] == "and" or "state":
             statement = Statement(name="10")
             matches = if_condition["matches"]
@@ -450,9 +424,7 @@ class XRTranslator:
                     statement.conditions.extend(conditions)
                 else:
                     self.logger.info(f"{match} could not be translated.")
-                    statement.conditions.extend(
-                        [{"_message": {"TRANSLATION_FAILED": match}}]
-                    )
+                    statement.conditions.extend([{"_message": {"TRANSLATION_FAILED": match}}])
             statement.actions.append({"target": "accept"})
             if if_condition["op"] == "and":
                 community_condition = []
@@ -461,16 +433,10 @@ class XRTranslator:
                         community_condition.append(self.translate_match(match)[0])
                         self.logger.info(self.translate_match(match)[0])
                 if len(community_condition) > 1:
-                    new_community_set_name = self.create_community_set_in_and_condition(
-                        community_condition
-                    )
-                    statement.conditions = [
-                        item for item in statement.conditions if "community" not in item
-                    ]
+                    new_community_set_name = self.create_community_set_in_and_condition(community_condition)
+                    statement.conditions = [item for item in statement.conditions if "community" not in item]
                     statement.conditions.append({"community": [new_community_set_name]})
-                    self.logger.info(
-                        f"update condition community: {new_community_set_name}"
-                    )
+                    self.logger.info(f"update condition community: {new_community_set_name}")
             if_policy = PolicyModel(
                 name=f"{PolicyPrefix.IF_CONDITION.value}{basename}",
                 statements=[statement],
@@ -487,9 +453,7 @@ class XRTranslator:
                     statement.conditions.extend(conditions)
                 else:
                     self.logger.info(f"{match} could not be translated.")
-                    statement.conditions.extend(
-                        [{"_message": {"TRANSLATION_FAILED": match}}]
-                    )
+                    statement.conditions.extend([{"_message": {"TRANSLATION_FAILED": match}}])
                 statement.actions.append({"target": "accept"})
                 statement_list.append(statement)
             if_policy = PolicyModel(
@@ -499,9 +463,7 @@ class XRTranslator:
             if_policy.set_default_reject()
 
         not_match_statement = Statement(name="10")
-        not_match_statement.conditions.append(
-            {"policy": f"{PolicyPrefix.IF_CONDITION.value}{basename}"}
-        )
+        not_match_statement.conditions.append({"policy": f"{PolicyPrefix.IF_CONDITION.value}{basename}"})
         not_match_statement.actions.append({"target": "reject"})
         not_if_policy = PolicyModel(
             name=f"{PolicyPrefix.NOT_IF_CONDITION.value}{basename}",
@@ -544,8 +506,8 @@ class XRTranslator:
                 if af.next_hop_self:
                     if af.route_policy_out:
                         if "ibgp-export" in str(af.route_policy_out):
-                            self.logger.info("auto generate af data:"  + str(af) )
-                            self.logger.info("execute auto_gen_ibgp_export:"  + str(self.auto_gen_ibgp_export()) )
+                            self.logger.info("auto generate af data:" + str(af))
+                            self.logger.info("execute auto_gen_ibgp_export:" + str(self.auto_gen_ibgp_export()))
                         export_policy = self.get_policy_by_name(af.route_policy_out)
 
                         # すでにnext-hop-selfが反映されたポリシーには追加しない
@@ -583,9 +545,7 @@ class XRTranslator:
                 if not statement.is_empty():
                     statement.actions.append(action)
                 else:
-                    statement = Statement(
-                        name=policy_basename, conditions=conditions, actions=[action]
-                    )
+                    statement = Statement(name=policy_basename, conditions=conditions, actions=[action])
 
             elif rule["if"] == "if":
                 self.logger.info(f"'if' rule found in {policy.name}: {rule}")
@@ -602,8 +562,7 @@ class XRTranslator:
                 # それにマッチしない経路はrejectする
                 if parent_conditional_policy:
                     if_policy.insert_policy_as_reject_statement(
-                        policy=self.get_opposite_policy(parent_conditional_policy),
-                        statement_name="parent-policy"
+                        policy=self.get_opposite_policy(parent_conditional_policy), statement_name="parent-policy"
                     )
 
                 if_policy.set_default_reject()
@@ -617,9 +576,7 @@ class XRTranslator:
                 if not statement.is_empty():
                     policy.statements.append(statement)
 
-                statement = Statement(
-                    name=f"{policy_basename}", conditions=base_conditions, actions=[]
-                )
+                statement = Statement(name=f"{policy_basename}", conditions=base_conditions, actions=[])
 
                 # ---------- then句の組み立て開始(if) ----------
                 self.logger.info(rule)
@@ -633,10 +590,8 @@ class XRTranslator:
                         if not statement.is_empty():
                             policy.statements.append(statement)
 
-                        statement = Statement(
-                            name=f"{policy_basename}", conditions=base_conditions, actions=[]
-                        )
-                        
+                        statement = Statement(name=f"{policy_basename}", conditions=base_conditions, actions=[])
+
                         _dummy_ttp_policy = {
                             "name": f"{policy_basename}-{child_count}",
                             "rules": [inner_rule],
@@ -655,9 +610,9 @@ class XRTranslator:
                         else:
                             self.logger.info(f"{inner_rule} could not be translated.")
                     child_count += 10
-                
+
                 # ---------- then句の組み立て終わり(if) ----------
-                
+
                 if not statement.is_empty():
                     policy.statements.append(statement)
 
@@ -674,16 +629,13 @@ class XRTranslator:
 
                 # elseifなので事前のif句の条件はすべて否定する
                 for i, past_policy in enumerate(past_conditional_policies):
-                    if_policy.insert_policy_as_reject_statement(
-                        policy=past_policy, statement_name=f"past-policy-{i}"
-                    )
+                    if_policy.insert_policy_as_reject_statement(policy=past_policy, statement_name=f"past-policy-{i}")
 
                 # ネストされたelseifの場合は上の階層の条件にマッチしていることが前提
                 # マッチしない場合はreject
                 if parent_conditional_policy:
                     if_policy.insert_policy_as_reject_statement(
-                        policy=self.get_opposite_policy(parent_conditional_policy),
-                        statement_name="parent-policy"
+                        policy=self.get_opposite_policy(parent_conditional_policy), statement_name="parent-policy"
                     )
 
                 if_policy.set_default_reject()
@@ -700,9 +652,7 @@ class XRTranslator:
                 if not statement.is_empty():
                     policy.statements.append(statement)
 
-                statement = Statement(
-                    name=f"{policy_basename}", conditions=base_conditions, actions=[]
-                )
+                statement = Statement(name=f"{policy_basename}", conditions=base_conditions, actions=[])
 
                 # ---------- then句の組み立て開始(elseif) ----------
 
@@ -713,9 +663,7 @@ class XRTranslator:
                         if not statement.is_empty():
                             policy.statements.append(statement)
 
-                        statement = Statement(
-                            name=f"{policy_basename}", conditions=base_conditions, actions=[]
-                        )
+                        statement = Statement(name=f"{policy_basename}", conditions=base_conditions, actions=[])
 
                         _dummy_ttp_policy = {
                             "name": f"{policy_basename}-{child_count}",
@@ -736,7 +684,7 @@ class XRTranslator:
                             self.logger.info(f"{inner_rule} could not be translated.")
 
                     child_count += 10
-                
+
                 if not statement.is_empty():
                     policy.statements.append(statement)
 
@@ -755,8 +703,7 @@ class XRTranslator:
                 # elseなので前にあるif/elseif節の条件に合致するものはrejectする
                 for i, past_policy in enumerate(past_conditional_policies):
                     else_policy.insert_policy_as_reject_statement(
-                        policy=past_policy,
-                        statement_name=f"past-policy-{i}"
+                        policy=past_policy, statement_name=f"past-policy-{i}"
                     )
 
                 self.policies.append(else_policy)
@@ -765,10 +712,8 @@ class XRTranslator:
 
                 if not statement.is_empty():
                     policy.statements.append(statement)
-                
-                statement = Statement(
-                    name=f"{policy_basename}", conditions=base_conditions, actions=[]
-                )
+
+                statement = Statement(name=f"{policy_basename}", conditions=base_conditions, actions=[])
 
                 # ---------- then句の組み立て開始(else) ----------
 
@@ -776,7 +721,7 @@ class XRTranslator:
                 for inner_rule in rule["rules"]:
                     inner_action = self.translate_rule(inner_rule)
                     if inner_action:
-                        statement.actions.append(inner_action),
+                        statement.actions.append(inner_action)
                     else:
                         self.logger.info(f"{inner_rule} could not be translated.")
                     child_count += 10
@@ -799,22 +744,24 @@ class XRTranslator:
         self.logger.info(f"appending policy: {policy}")
         self.policies.append(policy)
 
+
 if __name__ == "__main__":
-    ttp_file = sys.argv[1]
-    output_file = sys.argv[2]
 
-    with open(ttp_file, "r") as f:
-        ttp_parsed_config = json.load(f)
+    def main(ttp_file, output_file):
+        with open(ttp_file, "r", encoding="utf-8") as f:
+            ttp_parsed_config = json.load(f)
 
-    xrtranslator = XRTranslator(ttp_parsed_config, name=ttp_file)
-    xrtranslator.translate_policies()
-    policy_model_output = {
-        "node": xrtranslator.node,
-        "prefix-set": xrtranslator.prefix_set,
-        "as-path-set": xrtranslator.aspath_set,
-        "community-set": xrtranslator.community_set,
-        "policies": xrtranslator.policies,
-    }
+        xrtranslator = XRTranslator(ttp_parsed_config)
+        xrtranslator.translate_policies()
+        policy_model_output = {
+            "node": xrtranslator.node,
+            "prefix-set": xrtranslator.prefix_set,
+            "as-path-set": xrtranslator.aspath_set,
+            "community-set": xrtranslator.community_set,
+            "policies": xrtranslator.policies,
+        }
 
-    with open(output_file, "w") as f:
-        json.dump(policy_model_output, fp=f, indent=2, cls=PMEncoder)
+        with open(output_file, "w") as f:
+            json.dump(policy_model_output, fp=f, indent=2, cls=PMEncoder)
+
+    main(argv[1], argv[2])

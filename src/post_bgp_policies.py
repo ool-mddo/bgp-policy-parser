@@ -1,10 +1,10 @@
+from typing import List, Dict
 import argparse
 import glob
 import json
 import os
 import re
 import requests
-from typing import List, Dict
 
 BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_output")
 MODEL_CONDUCTOR_HOST = os.environ.get("MODEL_CONDUCTOR_HOST", "model-conductor:9292")
@@ -22,7 +22,7 @@ def _read_bgp_policy_data(network: str, snapshot: str) -> List:
     bgp_policy_files = glob.glob(os.path.join(bgp_policy_dir, "*"))
     bgp_policies = []
     for bgp_policy_file in bgp_policy_files:
-        with open(bgp_policy_file, "r") as f:
+        with open(bgp_policy_file, "r", encoding="utf-8") as f:
             bgp_policies.append(json.load(f))
     return bgp_policies
 
@@ -52,11 +52,7 @@ def _convert_policy(bgp_policy: Dict) -> Dict:
     for bgp_neighbor in bgp_policy["bgp_neighbors"]:
         af_key = "address_families"  # alias
         af_data = next(
-            (
-                af
-                for af in bgp_neighbor[af_key]
-                if af["afi"] == "ipv4" and af["next_hop_self"] is True
-            ),
+            (af for af in bgp_neighbor[af_key] if af["afi"] == "ipv4" and af["next_hop_self"] is True),
             None,
         )
         if not af_data:
@@ -68,9 +64,8 @@ def _convert_policy(bgp_policy: Dict) -> Dict:
         if af_data["route_policy_out"] != "":
             in_out_policy_patch["export-policy"] = [af_data["route_policy_out"]]
 
-         
         if "ibgp-export" in af_data["route_policy_out"]:
-            print(f"# DEBUG: af_data: ", af_data)
+            print("# DEBUG: af_data: ", af_data)
             tp_patch = {
                 "tp-id": f"peer_{bgp_neighbor['remote_ip']}",
                 "mddo-topology:bgp-proc-termination-point-attributes": in_out_policy_patch,
@@ -106,14 +101,12 @@ def post_bgp_policy(network: str, snapshot: str) -> requests.Response:
     url = f"http://{MODEL_CONDUCTOR_HOST}/conduct/{network}/{snapshot}/topology/bgp_proc/policies"
     payload = json.dumps(packed_policy)
     headers = {"Content-Type": "application/json"}
-    return requests.post(url=url, data=payload, headers=headers)
+    return requests.post(url=url, data=payload, headers=headers, timeout=180)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Collect configs to parse bgp-policy")
-    parser.add_argument(
-        "--network", "-n", required=True, type=str, help="Specify a target network name"
-    )
+    parser = argparse.ArgumentParser(description="Post BGP policies")
+    parser.add_argument("--network", "-n", required=True, type=str, help="Specify a target network name")
     parser.add_argument(
         "--snapshot",
         "-s",

@@ -8,7 +8,7 @@ import post_bgp_policies as post_bp
 app = Flask(__name__)
 app_logger = create_logger(app)
 logging.basicConfig(level=logging.DEBUG)
-#logging.basicConfig(level=logging.WARNING)
+# logging.basicConfig(level=logging.WARNING)
 
 
 @app.route("/bgp_policy/<network>/<snapshot>/parsed_result", methods=["POST"])

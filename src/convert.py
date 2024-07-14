@@ -1,10 +1,10 @@
 import json
 import sys
 
-with open(sys.argv[1], "r") as f:
+with open(sys.argv[1], "r", encoding="utf-8") as f:
     result = json.load(f)[0][0][0]
 
-with open(sys.argv[2], "r") as f:
+with open(sys.argv[2], "r", encoding="utf-8") as f:
     output = json.load(f)
 
 # node
