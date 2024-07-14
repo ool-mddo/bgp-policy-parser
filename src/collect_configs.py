@@ -29,7 +29,7 @@ def read_node_props(network: str, snapshot: str) -> List:
     return rows
 
 
-def detect_src_file_name(src_dir: os.path, node_name: str) -> str:
+def detect_src_file_name(src_dir: os.path, node_name: str) -> str | None:
     """Detect configuration file name using node name
     Args:
         src_dir (os.path): Source, snapshot directory (path)
@@ -46,6 +46,7 @@ def detect_src_file_name(src_dir: os.path, node_name: str) -> str:
         f"Error: source config is not found in {src_dir}, node_name:{node_name}",
         file=sys.stderr,
     )
+    return None
 
 
 def copy_configs(network: str, snapshot: str, node_props: List) -> None:

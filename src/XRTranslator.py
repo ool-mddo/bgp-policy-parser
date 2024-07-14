@@ -761,7 +761,7 @@ if __name__ == "__main__":
             "policies": xrtranslator.policies,
         }
 
-        with open(output_file, "w") as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             json.dump(policy_model_output, fp=f, indent=2, cls=PMEncoder)
 
     main(argv[1], argv[2])
