@@ -377,7 +377,7 @@ class XRTranslator:
         self.logger.info(f"{prefix_list_name} is not match in prefix-list_data")
         return route_filter_list
 
-    def translate_match(self, match: str) -> list:
+    def translate_match(self, match: str) -> list|None:
         condition = []
         # destination in prefix-list
         if match.split()[0] == "destination":
@@ -413,9 +413,10 @@ class XRTranslator:
                 return condition
             if op == "matches-every":
                 self.logger.info("matches-every is not implemented")
+        return None
 
     def generate_conditional_policies(self, basename: str, if_condition: dict) -> list[PolicyModel]:
-        if if_condition["op"] == "and" or "state":
+        if if_condition["op"] in ["and","state"]:
             statement = Statement(name="10")
             matches = if_condition["matches"]
             for match in matches:
@@ -443,7 +444,7 @@ class XRTranslator:
             )
             if_policy.set_default_reject()
 
-        if if_condition["op"] == "or":
+        elif if_condition["op"] == "or":
             matches = if_condition["matches"]
             statement_list = []
             for i, match in enumerate(matches):
@@ -743,6 +744,7 @@ class XRTranslator:
 
         self.logger.info(f"appending policy: {policy}")
         self.policies.append(policy)
+        return None
 
 
 if __name__ == "__main__":
