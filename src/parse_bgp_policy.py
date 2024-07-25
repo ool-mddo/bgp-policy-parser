@@ -1,11 +1,11 @@
 import argparse
-import sys
-from ttp import ttp
-import os
-import json
 import glob
+import json
+import os
+import sys
 from logging import getLogger, Formatter, DEBUG, INFO, FileHandler, StreamHandler
 from typing import Dict, List
+from ttp import ttp
 from XRTranslator import XRTranslator, PMEncoder
 
 
@@ -46,9 +46,29 @@ def _ttp_parse(text: str, os_type: str) -> List:
     return parser.result()
 
 
-def _save_parsed_result(
-    network: str, snapshot: str, os_type: str, config_file: str, parser_result: List
-) -> None:
+def _file_basename(orig_file_name: str) -> str:
+    file_name = os.path.basename(orig_file_name)
+    file_name_wo_ext = file_name
+    file_name_tokens = os.path.splitext(file_name)
+    if file_name_tokens[-1] in [".txt", ".conf", ".json"]:
+        file_name_wo_ext = file_name_tokens[0]
+
+    return file_name_wo_ext
+
+
+def _save_file(save_dir: str, file_name: str, data: List | Dict, use_pmenc: bool = False) -> None:
+    os.makedirs(save_dir, exist_ok=True)
+    file_name_wo_ext = _file_basename(file_name)
+    save_file = os.path.join(save_dir, f"{file_name_wo_ext}.json")
+    logger.info(f"Save file: {save_file}")
+    with open(save_file, "w", encoding="utf-8") as f:
+        if use_pmenc:
+            f.write(json.dumps(data, indent=2, cls=PMEncoder))
+        else:
+            f.write(json.dumps(data, indent=2))
+
+
+def _save_parsed_result(network: str, snapshot: str, os_type: str, config_file: str, parser_result: List) -> None:
     """Save parsed result
     Args:
         network (str): Network name
@@ -59,19 +79,11 @@ def _save_parsed_result(
     Returns:
         None
     """
-    file_name = os.path.basename(config_file)
-    file_name_wo_ext = os.path.splitext(file_name)[0]
     save_dir = os.path.join(TTP_OUTPUTS_DIR, network, snapshot, os_type)
-    os.makedirs(save_dir, exist_ok=True)
-    save_file = os.path.join(save_dir, f"{file_name_wo_ext}.json")
-    logger.info(f"parse result saved: {save_file}")
-    with open(save_file, "w") as f:
-        f.write(json.dumps(parser_result, indent=2))
+    _save_file(save_dir, config_file, parser_result)
 
 
-def _save_policy_model_output(
-    network: str, snapshot: str, ttp_result_file: str, model_output: Dict
-) -> None:
+def _save_policy_model_output(network: str, snapshot: str, ttp_result_file: str, model_output: Dict) -> None:
     """Save policy model
     Args:
         network (str): Network name
@@ -81,14 +93,8 @@ def _save_policy_model_output(
     Returns:
         None
     """
-    file_name = os.path.basename(ttp_result_file)
-    file_name_wo_ext = os.path.splitext(file_name)[0]
     save_dir = os.path.join(BGP_POLICIES_DIR, network, snapshot)
-    os.makedirs(save_dir, exist_ok=True)
-    save_file = os.path.join(save_dir, file_name_wo_ext)
-    logger.info(f"bgp policy saved: {save_file}")
-    with open(save_file, "w") as f:
-        f.write(json.dumps(model_output, indent=2, cls=PMEncoder))
+    _save_file(save_dir, ttp_result_file, model_output, use_pmenc=True)
 
 
 def _parse_files(network: str, snapshot: str, os_type: str) -> None:
@@ -102,33 +108,26 @@ def _parse_files(network: str, snapshot: str, os_type: str) -> None:
     """
     config_dir = os.path.join(TTP_CONFIGS_DIR, network, snapshot, os_type)
     if not os.path.isdir(config_dir):
-        logger.info(
-            f"config dir:{config_dir} for os_type:{os_type} is not found"
-        )
+        logger.info(f"config dir:{config_dir} for os_type:{os_type} is not found")
         return
 
     config_files = glob.glob(os.path.join(config_dir, "*"))
     for config_file in config_files:
-        with open(config_file, "r") as f:
+        with open(config_file, "r", encoding="utf-8") as f:
             config_txt = f.read()
             parsed = _ttp_parse(config_txt, os_type)
         _save_parsed_result(network, snapshot, os_type, config_file, parsed)
 
+
 def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
     """Convert parsed juniper policy to policy model
     Args:
-        ttp_output (dict): Policy data parsed by TTP 
+        ttp_output (dict): Policy data parsed by TTP
     Returns:
         dict: Policy model data
     """
 
-    policy_model = {
-        "node": "",
-        "prefix-set": [],
-        "as-path-set": [],
-        "community-set": [],
-        "policies": []
-    }
+    policy_model = {"node": "", "prefix-set": [], "as-path-set": [], "community-set": [], "policies": []}
 
     # node
     for item in ttp_output["interfaces"]:
@@ -140,35 +139,33 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
         for item in ttp_output["prefix-sets"]:
             policy_model["prefix-set"].append(item)
     else:
-        logger.info(f"prefix-set not found")
+        logger.info("prefix-set not found")
 
     # as-path-set
     if "aspath-sets" in ttp_output.keys():
         for item in ttp_output["aspath-sets"]:
             policy_model["as-path-set"].append(item)
     else:
-        logger.info(f"as-path-set not found")
+        logger.info("as-path-set not found")
 
     # community-set
     if "community-sets" in ttp_output.keys():
         for item in ttp_output["community-sets"]:
             data = {
                 "name": item["community"],
-                "communities": [
-                    {"community": member} for member in item["members"].split()
-                ],
+                "communities": [{"community": member} for member in item["members"].split()],
             }
             policy_model["community-set"].append(data)
     else:
-        logger.info(f"community-set not found")
+        logger.info("community-set not found")
 
     # policies
     if "policies" not in ttp_output:
-        logger.info(f"policy not found")
+        logger.info("policy not found")
         return policy_model
 
     for item in ttp_output["policies"]:
-        statements = list()
+        statements = []
 
         if "statements" not in item.keys():
             logger.info(f"statements not found in {item['name']}")
@@ -197,20 +194,16 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
                 logger.debug(f"  - condition : {condition}")
                 if "route-filter" in condition.keys():
                     prefix, *match_type_elem = condition["route-filter"].split()
-                    logger.debug(
-                        f"    - match_type_elem length: {len(match_type_elem)}"
-                    )
+                    logger.debug(f"    - match_type_elem length: {len(match_type_elem)}")
                     # exact
                     if len(match_type_elem) == 1:
                         # exact
-                        length = dict()
+                        length = {}
                         match_type = match_type_elem[0]
                     elif len(match_type_elem) == 2:
                         if match_type_elem[0] == "prefix-length-range":
                             # ex. prefix-length-range /25-/27 -> {"min": 25, "max": 27}
-                            min_length, max_length = [
-                                x.lstrip("/") for x in match_type_elem[1].split("-")
-                            ]
+                            min_length, max_length = [x.lstrip("/") for x in match_type_elem[1].split("-")]
                             length = {"max": max_length, "min": min_length}
                         elif match_type_elem[0] == "upto":
                             # ex. upto /24 -> {"max": 24}
@@ -226,9 +219,7 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
                     }
 
                 if "prefix-list-filter" in condition.keys():
-                    prefix_list, match_type = condition[
-                        "prefix-list-filter"
-                    ].split()
+                    prefix_list, match_type = condition["prefix-list-filter"].split()
 
                     conditions[i] = {
                         "prefix-list-filter": {
@@ -238,9 +229,7 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
                     }
 
                 if "community" in condition.keys():
-                    communities = (
-                        condition["community"].strip("[").strip("]").split()
-                    )
+                    communities = condition["community"].strip("[").strip("]").split()
 
                     conditions[i] = {"community": communities}
 
@@ -282,8 +271,9 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
 
         data = {"name": item["name"], "statements": statements, "default": default}
         policy_model["policies"].append(data)
-    
+
     return policy_model
+
 
 def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
     """
@@ -299,7 +289,7 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
     junos_ttp_outputs = glob.glob(os.path.join(junos_ttp_outputs_dir, "*"))
 
     for ttp_output_file in junos_ttp_outputs:
-        with open(ttp_output_file, "r") as f:
+        with open(ttp_output_file, "r", encoding="utf-8") as f:
             data = json.load(f)
         if any(data[0][0]) is False:
             logger.info("parse result is empty (it seems non-bgp-speaker)")
@@ -312,6 +302,7 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
 
         _save_policy_model_output(network, snapshot, ttp_output_file, policy_model)
 
+
 def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
     """
     Parse cisco_ios_xr configs and generate bgp policy data
@@ -322,20 +313,18 @@ def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
         None
     """
     _parse_files(network, snapshot, "cisco_ios_xr")
-    xr_ttp_outputs_dir = os.path.join(
-        TTP_OUTPUTS_DIR, network, snapshot, "cisco_ios_xr"
-    )
+    xr_ttp_outputs_dir = os.path.join(TTP_OUTPUTS_DIR, network, snapshot, "cisco_ios_xr")
     xr_ttp_outputs = glob.glob(os.path.join(xr_ttp_outputs_dir, "*"))
 
-    xr_translator = XRTranslator()
     for xr_output_file in xr_ttp_outputs:
-        with open(xr_output_file) as f:
+        with open(xr_output_file, "r", encoding="utf-8") as f:
             ttp_parsed_config = json.load(f)
             if any(ttp_parsed_config[0][0]) is False:
                 logger.info("parse result is empty (it seems non-bgp-speaker)")
                 continue
         logger.info(f"loading {xr_output_file}")
-        xr_translator.load_ttp_parsed_config(ttp_parsed_config)
+
+        xr_translator = XRTranslator(ttp_parsed_config)
         xr_translator.translate_policies()
         policy_model_output = {
             "node": xr_translator.node,
@@ -343,19 +332,14 @@ def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
             "as-path-set": xr_translator.aspath_set,
             "community-set": xr_translator.community_set,
             "policies": xr_translator.policies,
-            "bgp_neighbors": xr_translator.bgp_neighbors
+            "bgp_neighbors": xr_translator.bgp_neighbors,
         }
-
-        _save_policy_model_output(
-            network, snapshot, xr_output_file, policy_model_output
-        )
+        _save_policy_model_output(network, snapshot, xr_output_file, policy_model_output)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collect configs to parse bgp-policy")
-    parser.add_argument(
-        "--network", "-n", required=True, type=str, help="Specify a target network name"
-    )
+    parser.add_argument("--network", "-n", required=True, type=str, help="Specify a target network name")
     parser.add_argument(
         "--snapshot",
         "-s",

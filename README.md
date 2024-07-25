@@ -132,3 +132,29 @@ curl -s -X POST -H "Content-Type: application/json" \
 ```
 
 これによって、スクリプトを実行したときと同じように、`ttp_output`にはパース結果、`policy_model_output`には変換結果が出力されます。
+
+# Development
+
+install
+
+```shell
+pip install -r requirements_dev.txt
+```
+
+pylint
+
+```shell
+pylint --rcfile .config/pylintrc src/*.py
+```
+
+flake8
+
+```shell
+flake8 --config .config/flake8 src/*.py
+```
+
+black
+
+```shell
+black ./src/*.py
+```
