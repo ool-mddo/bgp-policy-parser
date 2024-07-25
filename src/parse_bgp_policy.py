@@ -127,6 +127,7 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
         dict: Policy model data
     """
 
+    ttp_output = ttp_output[0][0][0]
     policy_model = {"node": "", "prefix-set": [], "as-path-set": [], "community-set": [], "policies": []}
 
     # node
@@ -294,7 +295,7 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
         if any(data[0][0]) is False:
             logger.info("parse result is empty (it seems non-bgp-speaker)")
             return None
-        ttp_output = data[0][0][0]
+        ttp_output = data
 
         logger.info(f"- target: {ttp_output_file}")
 
