@@ -1,0 +1,982 @@
+{
+  "node": "192.168.255.7",
+  "prefix-set": [
+    {
+      "name": "as65550-advd",
+      "prefixes": [
+        {
+          "prefix": "10.100.0.0/16",
+          "match-type": "exact",
+          "length": {
+            "min": "16",
+            "max": "16"
+          }
+        }
+      ]
+    },
+    {
+      "name": "default-ipv4",
+      "prefixes": [
+        {
+          "prefix": "0.0.0.0/0",
+          "match-type": "exact",
+          "length": {
+            "min": "0",
+            "max": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "longer24-ipv4",
+      "prefixes": [
+        {
+          "prefix": "0.0.0.0/0",
+          "match-type": "prefix-length-range",
+          "length": {
+            "min": "25",
+            "max": "32"
+          }
+        }
+      ]
+    }
+  ],
+  "as-path-set": [
+    {
+      "group-name": "any",
+      "as-path": {
+        "name": "any",
+        "pattern": ".*"
+      }
+    },
+    {
+      "group-name": "as65550-origin",
+      "as-path": {
+        "name": "as65550-origin",
+        "pattern": "^(65550 )+$"
+      }
+    },
+    {
+      "group-name": "aspath-longer200",
+      "as-path": {
+        "name": "aspath-longer200",
+        "length": {
+          "min": "200"
+        }
+      }
+    }
+  ],
+  "community-set": [
+    {
+      "name": "any",
+      "communities": [
+        {
+          "community": "*:*"
+        }
+      ]
+    },
+    {
+      "name": "poi",
+      "communities": [
+        {
+          "community": "65518:20"
+        }
+      ]
+    },
+    {
+      "name": "peer",
+      "communities": [
+        {
+          "community": "65518:2"
+        }
+      ]
+    },
+    {
+      "name": "aggregate",
+      "communities": [
+        {
+          "community": "65518:1"
+        }
+      ]
+    },
+    {
+      "name": "as65518-any",
+      "communities": [
+        {
+          "community": "65518:.*"
+        }
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "name": "POI-East_in",
+      "statements": [
+        {
+          "name": "POI-East_in-10",
+          "conditions": [],
+          "actions": [
+            {
+              "metric": "100"
+            },
+            {
+              "local-preference": "300"
+            },
+            {
+              "community": {
+                "action": "delete",
+                "name": "any"
+              }
+            },
+            {
+              "community": {
+                "action": "set",
+                "name": "poi"
+              }
+            },
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": []
+      }
+    },
+    {
+      "name": "if-condition-reject-in-ipv4-10",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "route-filter": {
+                "prefix": "0.0.0.0/0",
+                "match-type": "prefix-length-range",
+                "length": {
+                  "min": "25",
+                  "max": "32"
+                }
+              }
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-reject-in-ipv4-10",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-reject-in-ipv4-10"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "if-condition-reject-in-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "route-filter": {
+                "prefix": "0.0.0.0/0",
+                "match-type": "exact",
+                "length": {
+                  "min": "0",
+                  "max": "0"
+                }
+              }
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-reject-in-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-reject-in-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "if-condition-reject-in-ipv4-30",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "as-path-group": "aspath-longer200"
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-reject-in-ipv4-30",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-reject-in-ipv4-30"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reject-in-ipv4",
+      "statements": [
+        {
+          "name": "reject-in-ipv4-10",
+          "conditions": [
+            {
+              "policy": "if-condition-reject-in-ipv4-10"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        },
+        {
+          "name": "reject-in-ipv4-20",
+          "conditions": [
+            {
+              "policy": "if-condition-reject-in-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        },
+        {
+          "name": "reject-in-ipv4-30",
+          "conditions": [
+            {
+              "policy": "if-condition-reject-in-ipv4-30"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        },
+        {
+          "name": "reject-in-ipv4-40",
+          "conditions": [],
+          "actions": [
+            {
+              "target": "next term"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": []
+      }
+    },
+    {
+      "name": "if-condition-reject-out-ipv4-10",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "route-filter": {
+                "prefix": "0.0.0.0/0",
+                "match-type": "prefix-length-range",
+                "length": {
+                  "min": "25",
+                  "max": "32"
+                }
+              }
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-reject-out-ipv4-10",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-reject-out-ipv4-10"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "if-condition-reject-out-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "route-filter": {
+                "prefix": "0.0.0.0/0",
+                "match-type": "exact",
+                "length": {
+                  "min": "0",
+                  "max": "0"
+                }
+              }
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-reject-out-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-reject-out-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reject-out-ipv4",
+      "statements": [
+        {
+          "name": "reject-out-ipv4-10",
+          "conditions": [
+            {
+              "policy": "if-condition-reject-out-ipv4-10"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        },
+        {
+          "name": "reject-out-ipv4-20",
+          "conditions": [
+            {
+              "policy": "if-condition-reject-out-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        },
+        {
+          "name": "reject-out-ipv4-30",
+          "conditions": [],
+          "actions": [
+            {
+              "target": "next term"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": []
+      }
+    },
+    {
+      "name": "if-condition-as65550-peer-in1-tyo-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "as-path-group": "as65550-origin"
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-as65550-peer-in1-tyo-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-as65550-peer-in1-tyo-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "if-condition-as65550-peer-in1-tyo-ipv4-30",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "as-path-group": "any"
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-as65550-peer-in1-tyo-ipv4-30",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-as65550-peer-in1-tyo-ipv4-30"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "as65550-peer-in1-tyo-ipv4",
+      "statements": [
+        {
+          "name": "as65550-peer-in1-tyo-ipv4-10",
+          "conditions": [],
+          "actions": [
+            {
+              "apply": "reject-in-ipv4"
+            }
+          ]
+        },
+        {
+          "name": "as65550-peer-in1-tyo-ipv4-20",
+          "conditions": [
+            {
+              "policy": "if-condition-as65550-peer-in1-tyo-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "local-preference": "300"
+            },
+            {
+              "metric": "100"
+            },
+            {
+              "community": {
+                "action": "set",
+                "name": "peer"
+              }
+            },
+            {
+              "target": "accept"
+            }
+          ]
+        },
+        {
+          "name": "as65550-peer-in1-tyo-ipv4-30",
+          "conditions": [
+            {
+              "policy": "if-condition-as65550-peer-in1-tyo-ipv4-30"
+            }
+          ],
+          "actions": [
+            {
+              "local-preference": "210"
+            },
+            {
+              "metric": "100"
+            },
+            {
+              "community": {
+                "action": "set",
+                "name": "peer"
+              }
+            },
+            {
+              "target": "accept"
+            }
+          ]
+        },
+        {
+          "name": "as65550-peer-in1-tyo-ipv4-40",
+          "conditions": [],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": []
+      }
+    },
+    {
+      "name": "if-condition-as65550-peer-out1-tyo-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "community": [
+                "aggregate"
+              ]
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-as65550-peer-out1-tyo-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-as65550-peer-out1-tyo-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "as65550-peer-out1-tyo-ipv4",
+      "statements": [
+        {
+          "name": "as65550-peer-out1-tyo-ipv4-10",
+          "conditions": [],
+          "actions": [
+            {
+              "apply": "reject-out-ipv4"
+            }
+          ]
+        },
+        {
+          "name": "as65550-peer-out1-tyo-ipv4-20",
+          "conditions": [
+            {
+              "policy": "if-condition-as65550-peer-out1-tyo-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "metric": "100"
+            },
+            {
+              "community": {
+                "action": "delete",
+                "name": "any"
+              }
+            },
+            {
+              "target": "accept"
+            }
+          ]
+        },
+        {
+          "name": "as65550-peer-out1-tyo-ipv4-30",
+          "conditions": [],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": []
+      }
+    },
+    {
+      "name": "if-condition-as65550-peer-out2-tyo-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "community": [
+                "aggregate"
+              ]
+            },
+            {
+              "route-filter": {
+                "prefix": "10.100.0.0/16",
+                "match-type": "exact",
+                "length": {
+                  "min": "16",
+                  "max": "16"
+                }
+              }
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-as65550-peer-out2-tyo-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-as65550-peer-out2-tyo-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "as65550-peer-out2-tyo-ipv4",
+      "statements": [
+        {
+          "name": "as65550-peer-out2-tyo-ipv4-10",
+          "conditions": [],
+          "actions": [
+            {
+              "apply": "reject-out-ipv4"
+            }
+          ]
+        },
+        {
+          "name": "as65550-peer-out2-tyo-ipv4-20",
+          "conditions": [
+            {
+              "policy": "if-condition-as65550-peer-out2-tyo-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "metric": "100"
+            },
+            {
+              "community": {
+                "action": "delete",
+                "name": "any"
+              }
+            },
+            {
+              "target": "accept"
+            }
+          ]
+        },
+        {
+          "name": "as65550-peer-out2-tyo-ipv4-30",
+          "conditions": [],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": []
+      }
+    },
+    {
+      "name": "ibgp-export",
+      "statements": [
+        {
+          "name": "_generated_next-hop-self",
+          "conditions": [
+            {
+              "protocol": "bgp"
+            }
+          ],
+          "actions": [
+            {
+              "local-preference": "100"
+            },
+            {
+              "next-hop": "self"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": []
+      }
+    }
+  ],
+  "bgp_neighbors": [
+    {
+      "remote_as": "65520",
+      "remote_ip": "192.168.0.18",
+      "address_families": [
+        {
+          "afi": "ipv4",
+          "safi": "unicast",
+          "send_community_ebgp": true,
+          "next_hop_self": true,
+          "remove_private_as": true,
+          "route_policy_in": "POI-East_in",
+          "route_policy_out": ""
+        }
+      ]
+    },
+    {
+      "remote_as": "65500",
+      "remote_ip": "192.168.255.1",
+      "address_families": [
+        {
+          "afi": "ipv4",
+          "safi": "unicast",
+          "send_community_ebgp": false,
+          "next_hop_self": true,
+          "remove_private_as": false,
+          "route_policy_in": "",
+          "route_policy_out": "ibgp-export"
+        }
+      ]
+    },
+    {
+      "remote_as": "65500",
+      "remote_ip": "192.168.255.2",
+      "address_families": [
+        {
+          "afi": "ipv4",
+          "safi": "unicast",
+          "send_community_ebgp": false,
+          "next_hop_self": true,
+          "remove_private_as": false,
+          "route_policy_in": "",
+          "route_policy_out": "ibgp-export"
+        }
+      ]
+    }
+  ]
+}
