@@ -138,6 +138,9 @@
                 {
                   "actions": [
                     {
+                      "as-path-prepend": "38639"
+                    },
+                    {
                       "metric": "100"
                     },
                     {

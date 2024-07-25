@@ -159,6 +159,13 @@
           ],
           "actions": [
             {
+              "as-path-prepend": {
+                "asn": [
+                  "38639"
+                ]
+              }
+            },
+            {
               "metric": "100"
             },
             {

@@ -5,7 +5,7 @@
         "begin_if": "(if|else|elseif)",
         "end_if": "(endif|else|elseif)",
         "pass_drop_done": "(pass|drop|done)",
-        "set_delete": "(set|delete)",
+        "set_delete_prepend": "(set|delete|prepend)",
         "not_if": "^(pass|drop|done|set|delete|apply).*",
         "apply": "apply.*"
       },
@@ -522,6 +522,11 @@
           "name": "POI-East_in",
           "rules": [
             {
+              "action": "prepend",
+              "attr": "as-path",
+              "value": "50000 2"
+            },
+            {
               "action": "set",
               "attr": "med",
               "value": "100"
@@ -648,6 +653,11 @@
                 ]
               },
               "rules": [
+                {
+                  "action": "prepend",
+                  "attr": "as-path",
+                  "value": "60000"
+                },
                 {
                   "action": "set",
                   "attr": "local-preference",
