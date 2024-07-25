@@ -15,8 +15,6 @@ from XRTranslator import XRTranslator, PMEncoder
 
 
 def _ttp_parse(file,template) -> list:
-    # with open(file, "r") as f:
-    #     raw_data = f.read()
     parser = ttp(file,template)
     parser.parse()
     return parser.result()
@@ -28,8 +26,7 @@ def test_cisco_ios_xr_policy_model():
     with open(ttp_parsed_file, "r") as f:
        ttp_parsed_config = json.load(f)
 
-    xr_translator = XRTranslator()
-    xr_translator.load_ttp_parsed_config(ttp_parsed_config)
+    xr_translator = XRTranslator(ttp_parsed_config)
     xr_translator.translate_policies()
     policy_model_output = {
         "node": xr_translator.node,
