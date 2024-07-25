@@ -23,13 +23,13 @@ def read_node_props(network: str, snapshot: str) -> List:
     """
     snapshot_dir = os.path.join(QUERIES_DIR, network, snapshot)
     node_props_file = os.path.join(snapshot_dir, "node_props.csv")
-    with open(node_props_file, "r") as f:
+    with open(node_props_file, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         rows = [row for row in reader]
     return rows
 
 
-def detect_src_file_name(src_dir: os.path, node_name: str) -> str:
+def detect_src_file_name(src_dir: os.path, node_name: str) -> str | None:
     """Detect configuration file name using node name
     Args:
         src_dir (os.path): Source, snapshot directory (path)
@@ -46,6 +46,7 @@ def detect_src_file_name(src_dir: os.path, node_name: str) -> str:
         f"Error: source config is not found in {src_dir}, node_name:{node_name}",
         file=sys.stderr,
     )
+    return None
 
 
 def copy_configs(network: str, snapshot: str, node_props: List) -> None:
@@ -76,9 +77,7 @@ def copy_configs(network: str, snapshot: str, node_props: List) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collect configs to parse bgp-policy")
-    parser.add_argument(
-        "--network", "-n", required=True, type=str, help="Specify a target network name"
-    )
+    parser.add_argument("--network", "-n", required=True, type=str, help="Specify a target network name")
     parser.add_argument(
         "--snapshot",
         "-s",
