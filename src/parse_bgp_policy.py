@@ -238,9 +238,11 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
                 tmpactions = {}
                 if "as-path-prepend" in action.keys():
                     # logger.debug(f"as-path-prepend:::: " + str(action))
-                    asn = action["as-path-prepend"].split()
-
-                    tmpactions.update({"as-path-prepend": {"asn": asn}})
+                    asn_list = action["as-path-prepend"].split()
+                    as_path_prepend_value = []
+                    for asn in asn_list:
+                        as_path_prepend_value.append({"asn":asn,"repeat":1})
+                    tmpactions.update({"as-path-prepend": as_path_prepend_value})
                     # conditions[i] = {"as-path-prepend": {"asn": asn}}
 
                 if "community" in action.keys():

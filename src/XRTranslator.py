@@ -351,11 +351,11 @@ class XRTranslator:
         elif rule["action"] == "prepend":
             attr = rule["attr"]
             asn,*repeat = rule["value"].split()
-            self.logger.info(f"asn:{asn}, repeat:{repeat}")
-            asn = [asn]
             if repeat:
-                asn = asn * int(repeat[0])
-            action = {"as-path-prepend": {"asn": asn}}
+                repeat = repeat[0]
+            else:
+                repeat = 1
+            action = {"as-path-prepend": [{"asn": asn, "repeat": repeat}]}
 
         elif rule["action"] == "apply":
             action = {"apply": rule["value"]}
