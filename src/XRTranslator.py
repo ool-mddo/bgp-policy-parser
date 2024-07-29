@@ -352,7 +352,7 @@ class XRTranslator:
             attr = rule["attr"]
             asn,*repeat = rule["value"].split()
             if repeat:
-                repeat = repeat[0]
+                repeat = int(repeat[0])
             else:
                 repeat = 1
             action = {"as-path-prepend": [{"asn": asn, "repeat": repeat}]}
