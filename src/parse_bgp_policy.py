@@ -299,7 +299,7 @@ def valid_parsed_result(os_type: str, output_file: str, parsed_data: dict) -> bo
         logger.error(f"parse result:{output_file} ({os_type}) is empty")
         return False
 
-    if os_type == "cisco_ios_xr" and "bgp" not in parsed_data:
+    if "bgp" not in parsed_data:
         logger.error(f"parse result:{output_file} ({os_type}) doesn't have bgp configs")
         return False
 

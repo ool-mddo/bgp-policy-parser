@@ -45,6 +45,14 @@ interfaces { {{ _start_ }}
 </group>
 
 <group>
+protocols { {{ _start_ }}
+    <group name="{{ protocol }}">
+    {{ protocol }} {
+    }</group>
+} {{ _end_ }}
+</group>
+
+<group>
 policy-options { {{ _start_ }}
     
     <group name="prefix-sets*">
