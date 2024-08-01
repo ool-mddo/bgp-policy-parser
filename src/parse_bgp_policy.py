@@ -2,8 +2,9 @@ import argparse
 import glob
 import json
 import os
+import re
 import sys
-from logging import getLogger, Formatter, DEBUG, INFO, FileHandler, StreamHandler
+from logging import getLogger, Formatter, DEBUG, ERROR, FileHandler, StreamHandler
 from typing import Dict, List
 from ttp import ttp
 from XRTranslator import XRTranslator, PMEncoder
@@ -19,7 +20,7 @@ BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_outpu
 
 logger = getLogger("main")
 logger.setLevel(DEBUG)
-formatter = Formatter("[{asctime} @{funcName}-{lineno}] {message}", style="{")
+formatter = Formatter("[{asctime} @{funcName}-{lineno} - {levelname}] {message}", style="{")
 
 fh = FileHandler("parser.log")
 fh.setFormatter(formatter)
@@ -28,7 +29,7 @@ logger.addHandler(fh)
 
 sh = StreamHandler(sys.stdout)
 sh.setFormatter(formatter)
-sh.setLevel(INFO)
+sh.setLevel(ERROR)
 logger.addHandler(sh)
 
 
@@ -238,10 +239,10 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
                 tmpactions = {}
                 if "as-path-prepend" in action.keys():
                     # logger.debug(f"as-path-prepend:::: " + str(action))
-                    asn_list = action["as-path-prepend"].strip('\"').split()
+                    asn_list = action["as-path-prepend"].strip('"').split()
                     as_path_prepend_value = []
                     for asn in asn_list:
-                        as_path_prepend_value.append({"asn":asn,"repeat":1})
+                        as_path_prepend_value.append({"asn": asn, "repeat": 1})
                     tmpactions.update({"as-path-prepend": as_path_prepend_value})
                     # conditions[i] = {"as-path-prepend": {"asn": asn}}
 
@@ -278,6 +279,38 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
     return policy_model
 
 
+def valid_parsed_result(os_type: str, output_file: str, parsed_data: dict) -> bool:
+    """
+    Validate ttp parsed data (parsed data of cisco/juniper with ttp)
+    Args:
+        output_file (str): Output file name
+        parsed_data (dict): Parsed data of ttp
+    Returns:
+        bool
+    """
+    if any(parsed_data) is False:
+        logger.info(f"parse result:{output_file} is empty")
+        return False
+
+    if os_type == "juniper":
+        parsed_data = parsed_data[0]  # One more nesting when juniper
+
+    if all(len(parsed_data[k]) < 1 for k in parsed_data.keys()):
+        logger.error(f"parse result:{output_file} ({os_type}) is empty")
+        return False
+
+    if os_type == "cisco_ios_xr" and "bgp" not in parsed_data:
+        logger.error(f"parse result:{output_file} ({os_type}) doesn't have bgp configs")
+        return False
+
+    if not any(re.match(r"[Ll]o(opback)?\d", d["name"]) for d in parsed_data["interfaces"]):
+        logger.error(parsed_data["interfaces"])
+        logger.error(f"parse result:{output_file} ({os_type}) doesn't have loopback")
+        return False
+
+    return True
+
+
 def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
     """
     Parse juniper configs and generate bgp-policy data
@@ -292,17 +325,17 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
     junos_ttp_outputs = glob.glob(os.path.join(junos_ttp_outputs_dir, "*"))
 
     for ttp_output_file in junos_ttp_outputs:
+        logger.info(f"loading: {ttp_output_file}")
+
         with open(ttp_output_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-        if any(data[0][0]) is False:
-            logger.info("parse result is empty (it seems non-bgp-speaker)")
-            return None
+
+        if valid_parsed_result("juniper", ttp_output_file, data[0][0]) is False:
+            logger.error(f"skip parsed result:{ttp_output_file} because it is invalid")
+            continue
+
         ttp_output = data
-
-        logger.info(f"- target: {ttp_output_file}")
-
         policy_model = _convert_juniper_ttp_to_policy_model(ttp_output)
-
         _save_policy_model_output(network, snapshot, ttp_output_file, policy_model)
 
 
@@ -320,12 +353,14 @@ def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
     xr_ttp_outputs = glob.glob(os.path.join(xr_ttp_outputs_dir, "*"))
 
     for xr_output_file in xr_ttp_outputs:
+        logger.info(f"loading {xr_output_file}")
+
         with open(xr_output_file, "r", encoding="utf-8") as f:
             ttp_parsed_config = json.load(f)
-            if any(ttp_parsed_config[0][0]) is False:
-                logger.info("parse result is empty (it seems non-bgp-speaker)")
-                continue
-        logger.info(f"loading {xr_output_file}")
+
+        if valid_parsed_result("cisco_ios_xr", xr_output_file, ttp_parsed_config[0][0]) is False:
+            logger.error(f"skip parsed result:{xr_output_file} because it is invalid")
+            continue
 
         xr_translator = XRTranslator(ttp_parsed_config)
         xr_translator.translate_policies()
