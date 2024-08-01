@@ -159,11 +159,16 @@
           ],
           "actions": [
             {
-              "as-path-prepend": {
-                "asn": [
-                  "38639"
-                ]
-              }
+              "as-path-prepend": [
+                {
+                  "asn": "65500",
+                  "repeat": 1
+                },
+                {
+                  "asn": "65500",
+                  "repeat": 1
+                }
+              ]
             },
             {
               "metric": "100"
@@ -191,6 +196,14 @@
             }
           ],
           "actions": [
+            {
+              "as-path-prepend": [
+                {
+                  "asn": "65501",
+                  "repeat": 1
+                }
+              ]
+            },
             {
               "metric": "100"
             },

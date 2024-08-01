@@ -117,12 +117,12 @@
           "conditions": [],
           "actions": [
             {
-              "as-path-prepend": {
-                "asn": [
-                  "50000",
-                  "50000"
-                ]
-              }
+              "as-path-prepend": [
+                {
+                  "asn": "50000",
+                  "repeat": 2
+                }
+              ]
             },
             {
               "metric": "100"
@@ -650,11 +650,12 @@
           ],
           "actions": [
             {
-              "as-path-prepend": {
-                "asn": [
-                  "60000"
-                ]
-              }
+              "as-path-prepend": [
+                {
+                  "asn": "60000",
+                  "repeat": 1
+                }
+              ]
             },
             {
               "local-preference": "300"
