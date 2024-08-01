@@ -83,21 +83,21 @@ class BGPNeighbor:
 
 class XRTranslator:
     def __init__(self, ttp_parsed_data: dict):
-        self.logger = getLogger("xr")
-        self.logger.setLevel(DEBUG)
-        formatter = Formatter("[{asctime} @{funcName}-{lineno}] {message}", style="{")
+        # self.logger = getLogger("xr")
+        # self.logger.setLevel(DEBUG)
+        # formatter = Formatter("[{asctime} @{funcName}-{lineno}] {message}", style="{")
 
-        sh = StreamHandler(stdout)
-        sh.setFormatter(formatter)
-        sh.setLevel(INFO)
-        self.logger.addHandler(sh)
-        self.logger.propagate = False
+        # sh = StreamHandler(stdout)
+        # sh.setFormatter(formatter)
+        # sh.setLevel(INFO)
+        # self.logger.addHandler(sh)
+        # self.logger.propagate = False
 
-        fh = FileHandler("parser.log")
-        fh.setFormatter(formatter)
-        fh.setLevel(DEBUG)
-        self.logger.addHandler(fh)
-
+        # fh = FileHandler("parser.log")
+        # fh.setFormatter(formatter)
+        # fh.setLevel(DEBUG)
+        # self.logger.addHandler(fh)
+        self.logger = getLogger("main")
         self.node = ""
         self.community_set = []
         self.aspath_set = []
@@ -173,12 +173,15 @@ class XRTranslator:
     def translate_bgp_neighbors(self) -> None:
         for ttp_neighbor in self.ttp_parsed_data["bgp"]["neighbors"]:
             self.logger.info(f"translate bgp neighbor: {ttp_neighbor}")
+            if "remote-as" not in ttp_neighbor or "remote-ip" not in ttp_neighbor:
+                self.logger.error(f"not found remote-as/ip info in {ttp_neighbor} (use neighbor-group?)")
+                continue
             neighbor = BGPNeighbor(remote_as=ttp_neighbor["remote-as"], remote_ip=ttp_neighbor["remote-ip"])
             for ttp_af in ttp_neighbor["address-families"]:
                 af = self.translate_af(ttp_af)
                 neighbor.address_families.append(af)
 
-            self.logger.info(f"appen neighbor; {neighbor}")
+            self.logger.info(f"append neighbor; {neighbor}")
             self.bgp_neighbors.append(neighbor)
 
     def translate_af(self, ttp_af: [dict]) -> AddressFamily:
@@ -350,7 +353,7 @@ class XRTranslator:
 
         elif rule["action"] == "prepend":
             attr = rule["attr"]
-            asn,*repeat = rule["value"].split()
+            asn, *repeat = rule["value"].split()
             if repeat:
                 repeat = int(repeat[0])
             else:
@@ -386,7 +389,7 @@ class XRTranslator:
         self.logger.info(f"{prefix_list_name} is not match in prefix-list_data")
         return route_filter_list
 
-    def translate_match(self, match: str) -> list|None:
+    def translate_match(self, match: str) -> list | None:
         condition = []
         # destination in prefix-list
         if match.split()[0] == "destination":
@@ -425,7 +428,7 @@ class XRTranslator:
         return None
 
     def generate_conditional_policies(self, basename: str, if_condition: dict) -> list[PolicyModel]:
-        if if_condition["op"] in ["and","state"]:
+        if if_condition["op"] in ["and", "state"]:
             statement = Statement(name="10")
             matches = if_condition["matches"]
             for match in matches:
