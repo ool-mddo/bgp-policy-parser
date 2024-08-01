@@ -13,7 +13,7 @@ EXPECTS_DIR = os.path.join(FILE_DIR, "expects")
 
 sys.path.append(os.path.join(FILE_DIR,os.pardir,"src"))
 from XRTranslator import XRTranslator, PMEncoder
-from parse_bgp_policy import _convert_juniper_ttp_to_policy_model
+from parse_bgp_policy import _convert_juniper_ttp_to_policy_model,valid_parsed_result
 
 def _ttp_parse(file,template) -> list:
     parser = ttp(file,template)
@@ -94,3 +94,20 @@ def test_juniper_ttp():
             
     assert  ttp_result == expect_data
 
+def test_juniper_unuse_bgp_ttp():
+    input_file = os.path.join(INPUT_DIR,"juniper_unuse_bgp.conf")
+    template_file = os.path.join(TEMPLATE_DIR,"juniper.ttp")
+    output_file = os.path.join(OUTPUT_DIR, "juniper","ttp_unuse_ttp.json")
+    ttp_result = _ttp_parse(input_file,template_file)
+    valid_result =  valid_parsed_result("juniper",output_file,ttp_result[0][0])
+           
+    assert  valid_result == False
+
+def test_cisco_ios_xr_unuse_bgp_ttp():
+    input_file = os.path.join(INPUT_DIR,"cisco_ios_xr_unuse_bgp.conf")
+    template_file = os.path.join(TEMPLATE_DIR,"cisco_ios_xr.ttp")
+    output_file = os.path.join(OUTPUT_DIR, "cisco_ios_xr","ttp_unuse_bgp.json")
+    ttp_result = _ttp_parse(input_file,template_file)
+    valid_result =  valid_parsed_result("cisco_ios_xr",output_file,ttp_result[0][0])
+
+    assert  valid_result == False
