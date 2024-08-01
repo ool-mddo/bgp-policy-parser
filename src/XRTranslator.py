@@ -83,20 +83,6 @@ class BGPNeighbor:
 
 class XRTranslator:
     def __init__(self, ttp_parsed_data: dict):
-        # self.logger = getLogger("xr")
-        # self.logger.setLevel(DEBUG)
-        # formatter = Formatter("[{asctime} @{funcName}-{lineno}] {message}", style="{")
-
-        # sh = StreamHandler(stdout)
-        # sh.setFormatter(formatter)
-        # sh.setLevel(INFO)
-        # self.logger.addHandler(sh)
-        # self.logger.propagate = False
-
-        # fh = FileHandler("parser.log")
-        # fh.setFormatter(formatter)
-        # fh.setLevel(DEBUG)
-        # self.logger.addHandler(fh)
         self.logger = getLogger("main")
         self.node = ""
         self.community_set = []
