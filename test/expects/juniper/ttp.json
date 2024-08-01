@@ -138,6 +138,9 @@
                 {
                   "actions": [
                     {
+                      "as-path-prepend": "\"65500 65500\""
+                    },
+                    {
                       "metric": "100"
                     },
                     {
@@ -162,6 +165,9 @@
                 },
                 {
                   "actions": [
+                    {
+                      "as-path-prepend": "65501"
+                    },
                     {
                       "metric": "100"
                     },

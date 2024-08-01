@@ -36,7 +36,7 @@ def to_dict(data):
 begin_if = "(if|else|elseif)"
 end_if = "(endif|else|elseif)"
 pass_drop_done = "(pass|drop|done)"
-set_delete = "(set|delete)"
+set_delete_prepend = "(set|delete|prepend)"
 not_if = "^(pass|drop|done|set|delete|apply).*"
 apply = "apply.*"
 </vars>
@@ -91,7 +91,7 @@ route-policy {{ name | _start_ }}
   {{ if | | _exact_space_ | re(begin_if) | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
 
     <group name="rules*">
-    {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }} 
+    {{ action | _exact_space_ | re(set_delete_prepend)}} {{ attr }} {{ value | _line_ }} 
     </group>
     <group name="rules*">
     {{ action | _exact_space_ | re(apply) }} {{ value }}
@@ -104,7 +104,7 @@ route-policy {{ name | _start_ }}
     <group name="rules*">
     {{ if | _exact_space_ | re(begin_if) | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
       <group name="rules*">
-      {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+      {{ action | _exact_space_ | re(set_delete_prepend)}} {{ attr }} {{ value | _line_ }}
       </group>
       <group name="rules*">
       {{ action | _exact_space_ | re(apply) }} {{ value }}
@@ -117,7 +117,7 @@ route-policy {{ name | _start_ }}
       <group name="rules*">
       {{ if | _exact_space_ | re(begin_if) | _start_ }} {{ condition | _line_ | macro(split_by_conditions) }} then
         <group name="rules*">
-        {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+        {{ action | _exact_space_ | re(set_delete_prepend)}} {{ attr }} {{ value | _line_ }}
         </group>
         <group name="rules*">
         {{ action | _exact_space_ | re(apply) }} {{ value }}
@@ -131,7 +131,7 @@ route-policy {{ name | _start_ }}
       <group>
       {{ if | _exact_space_ | re("else") | _start_ }} 
         <group name="rules*">
-        {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+        {{ action | _exact_space_ | re(set_delete_prepend)}} {{ attr }} {{ value | _line_ }}
         </group>
         <group name="rules*">
         {{ action | _exact_space_ | re(apply) }} {{ value }}
@@ -148,7 +148,7 @@ route-policy {{ name | _start_ }}
     <group>
     {{ if | _exact_space_ | re("else") | _start_ }} 
       <group name="rules*">
-      {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+      {{ action | _exact_space_ | re(set_delete_prepend)}} {{ attr }} {{ value | _line_ }}
       </group>
       <group name="rules*">
       {{ action | _exact_space_ | re(apply) }} {{ value }}
@@ -164,7 +164,7 @@ route-policy {{ name | _start_ }}
   <group>
   {{ if | _exact_space_ | re("else") | _start_ }} 
     <group name="rules*">
-    {{ action | _exact_space_ | re(set_delete)}} {{ attr }} {{ value | _line_ }}
+    {{ action | _exact_space_ | re(set_delete_prepend)}} {{ attr }} {{ value | _line_ }}
     </group>
     <group name="rules*">
     {{ action | _exact_space_ | re(apply) }} {{ value }}
@@ -178,7 +178,7 @@ route-policy {{ name | _start_ }}
   </group>
 
   <group name="rules*">
-  {{ action | _exact_space_ | re(set_delete) }} {{ attr }} {{ value | _line_ }}
+  {{ action | _exact_space_ | re(set_delete_prepend) }} {{ attr }} {{ value | _line_ }}
   </group>
   <group name="rules*">
   {{ action | _exact_space_ | re(apply) }} {{ value }}

@@ -348,6 +348,15 @@ class XRTranslator:
                 community_name = rule["value"].split()[-1]
                 action = {"community": {"action": "delete", "name": community_name}}
 
+        elif rule["action"] == "prepend":
+            attr = rule["attr"]
+            asn,*repeat = rule["value"].split()
+            if repeat:
+                repeat = int(repeat[0])
+            else:
+                repeat = 1
+            action = {"as-path-prepend": [{"asn": asn, "repeat": repeat}]}
+
         elif rule["action"] == "apply":
             action = {"apply": rule["value"]}
 

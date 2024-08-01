@@ -127,6 +127,7 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
         dict: Policy model data
     """
 
+    ttp_output = ttp_output[0][0][0]
     policy_model = {"node": "", "prefix-set": [], "as-path-set": [], "community-set": [], "policies": []}
 
     # node
@@ -237,9 +238,11 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
                 tmpactions = {}
                 if "as-path-prepend" in action.keys():
                     # logger.debug(f"as-path-prepend:::: " + str(action))
-                    asn = action["as-path-prepend"].split()
-
-                    tmpactions.update({"as-path-prepend": {"asn": asn}})
+                    asn_list = action["as-path-prepend"].strip('\"').split()
+                    as_path_prepend_value = []
+                    for asn in asn_list:
+                        as_path_prepend_value.append({"asn":asn,"repeat":1})
+                    tmpactions.update({"as-path-prepend": as_path_prepend_value})
                     # conditions[i] = {"as-path-prepend": {"asn": asn}}
 
                 if "community" in action.keys():
@@ -294,7 +297,7 @@ def parse_juniper_bgp_policy(network: str, snapshot: str) -> None:
         if any(data[0][0]) is False:
             logger.info("parse result is empty (it seems non-bgp-speaker)")
             return None
-        ttp_output = data[0][0][0]
+        ttp_output = data
 
         logger.info(f"- target: {ttp_output_file}")
 
