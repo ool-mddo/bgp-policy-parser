@@ -40,6 +40,8 @@
             "name": "lo0"
           }
         ],
+        "bgp": {},
+        "ospf": {},
         "prefix-sets": [
           {
             "name": "default-ipv4",
