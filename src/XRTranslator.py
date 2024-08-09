@@ -232,24 +232,43 @@ class XRTranslator:
 
             aspath_data = {
                 "group-name": aspath_obj["name"],
-                "as-path": {"name": aspath_obj["name"]},
+                "as-path": [],
             }
 
             # 空のas-path-set
             if "conditions" not in aspath_obj.keys():
-                aspath_data["as-path"]["pattern"] = ".*"
+                aspath_data["as-path"].append(
+                    {
+                        "name": aspath_obj["name"],
+                        "pattern": "*",
+                    }
+                )
                 self.aspath_set.append(aspath_data)
                 continue
 
-            for aspath_condition in aspath_obj["conditions"]:
+            for i, aspath_condition in enumerate(aspath_obj["conditions"]):
                 if "pattern" in aspath_condition.keys():
-                    aspath_data["as-path"]["pattern"] = self.translate_aspath_pattern(aspath_condition["pattern"])
+                    aspath_data["as-path"].append(
+                        {
+                            "name": f"{aspath_obj['name']}_{i+1}",
+                            "pattern": self.translate_aspath_pattern(aspath_condition["pattern"])
+                        }
+                    )
 
                 if "length" in aspath_condition.keys():
                     if aspath_condition["condition"] == "le":
-                        aspath_data["as-path"]["length"] = {"max": aspath_condition["length"]}
+                        aspath_data["as-path"].append(
+                            {
+                                "length": {"max": aspath_condition["length"]}
+                            }
+                        )
                     elif aspath_condition["condition"] == "ge":
-                        aspath_data["as-path"]["length"] = {"min": aspath_condition["length"]}
+                        aspath_data["as-path"].append(
+                            {
+                                "name": f"{aspath_obj['name']}_{i+1}",
+                                "length": {"min": aspath_condition["length"]}
+                            }
+                        )
             self.aspath_set.append(aspath_data)
 
     def translate_aspath_pattern(self, pattern: str) -> str:

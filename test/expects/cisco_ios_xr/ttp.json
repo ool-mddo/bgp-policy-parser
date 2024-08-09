@@ -458,6 +458,17 @@
           ]
         },
         {
+          "name": "multiple-regex",
+          "conditions": [
+            {
+              "pattern": "^(65001_)+$"
+            },
+            {
+              "pattern": "^(65002_)+$"
+            }
+          ]
+        },
+        {
           "name": "as65550-origin",
           "conditions": [
             {
