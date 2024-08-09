@@ -409,24 +409,47 @@
         "aspath-sets": [
           {
             "group-name": "aspath-longer200",
-            "as-path": {
+            "as-path": [
+              {
               "name": "aspath-longer200",
               "pattern": ".{200,}"
             }
+            ]
           },
           {
             "group-name": "any",
-            "as-path": {
+            "as-path": [
+              {
               "name": "any",
               "pattern": ".*"
             }
+            ]
           },
           {
             "group-name": "as65550-origin",
-            "as-path": {
+            "as-path": [
+              {
               "name": "65550",
               "pattern": "65550+"
             }
+            ]
+          },
+          {
+            "group-name": "multiple-as-path",
+            "as-path": [
+              {
+                "name": "aspath1",
+                "pattern": "65001"
+              },
+              {
+                "name": "aspath2",
+                "pattern": "65002+ 65003+"
+              },
+              {
+                "name": "aspath3",
+                "pattern": "65004+ 65005+"
+              }
+            ]
           }
         ]
       }

@@ -44,26 +44,45 @@
   "as-path-set": [
     {
       "group-name": "any",
-      "as-path": {
-        "name": "any",
-        "pattern": ".*"
-      }
+      "as-path": [
+        {
+          "name": "any_1",
+          "pattern": ".*"
+        }
+      ]
+    },
+    {
+      "group-name": "multiple-regex",
+      "as-path": [
+        {
+          "name": "multiple-regex_1",
+          "pattern": "^(65001 )+$"
+        },
+        {
+          "name": "multiple-regex_2",
+          "pattern": "^(65002 )+$"
+        }
+      ]
     },
     {
       "group-name": "as65550-origin",
-      "as-path": {
-        "name": "as65550-origin",
-        "pattern": "^(65550 )+$"
-      }
+      "as-path": [
+        {
+          "name": "as65550-origin_1",
+          "pattern": "^(65550 )+$"
+        }
+      ]
     },
     {
       "group-name": "aspath-longer200",
-      "as-path": {
-        "name": "aspath-longer200",
-        "length": {
-          "min": "200"
+      "as-path": [
+        {
+          "name": "aspath-longer200_1",
+          "length": {
+            "min": "200"
+          }
         }
-      }
+      ]
     }
   ],
   "community-set": [
