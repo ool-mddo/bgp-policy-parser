@@ -6,11 +6,25 @@ import shutil
 import sys
 from typing import List
 
+from parse_bgp_policy import TTP_OUTPUTS_DIR, TTP_CONFIGS_DIR, TTP_BGP_POLICIES_DIR
 
 CONFIGS_DIR = os.environ.get("MDDO_CONFIGS_DIR", "./configs")
 QUERIES_DIR = os.environ.get("MDDO_QUERIES_DIR", "./queries")
-TTP_CONFIGS_DIR = os.environ.get("MDDO_TTP_CONFIGS_DIR", "./configs")
 OS_TYPES = ["JUNIPER", "CISCO_IOS_XR"]
+
+
+def cleanup_snapshot_dir(network: str, snapshot: str) -> None:
+    """Clean-up ttp working directory (snapshot directory)
+    Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
+    Returns:
+        None
+    """
+    for work_dir_base in [TTP_CONFIGS_DIR, TTP_OUTPUTS_DIR, TTP_BGP_POLICIES_DIR]:
+        work_dir = os.path.join(work_dir_base, network, snapshot)
+        print(f"Cleanup TTP dir: {work_dir}", file=sys.stderr)
+        shutil.rmtree(work_dir)
 
 
 def read_node_props(network: str, snapshot: str) -> List:

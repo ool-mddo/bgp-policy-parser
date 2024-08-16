@@ -15,7 +15,7 @@ SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 TTP_TEMPLATES_DIR = os.path.join(SRC_DIR, "template")
 TTP_CONFIGS_DIR = os.environ.get("MDDO_TTP_CONFIGS_DIR", "./configs")
 TTP_OUTPUTS_DIR = os.environ.get("MDDO_TTP_OUTPUTS_DIR", "./ttp_output")
-BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_output")
+TTP_BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_output")
 
 
 logger = getLogger("main")
@@ -94,7 +94,7 @@ def _save_policy_model_output(network: str, snapshot: str, ttp_result_file: str,
     Returns:
         None
     """
-    save_dir = os.path.join(BGP_POLICIES_DIR, network, snapshot)
+    save_dir = os.path.join(TTP_BGP_POLICIES_DIR, network, snapshot)
     _save_file(save_dir, ttp_result_file, model_output, use_pmenc=True)
 
 
