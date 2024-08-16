@@ -135,6 +135,11 @@ curl -s -X POST -H "Content-Type: application/json" \
 
 # Development
 
+test
+```shell
+pytest test/test.py
+```
+
 install
 
 ```shell
@@ -144,17 +149,17 @@ pip install -r requirements_dev.txt
 pylint
 
 ```shell
-pylint --rcfile .config/pylintrc src/*.py
+pylint --rcfile .config/pylintrc src/*.py test/*.py
 ```
 
 flake8
 
 ```shell
-flake8 --config .config/flake8 src/*.py
+flake8 --config .config/flake8 src/*.py test/*.py
 ```
 
 black
 
 ```shell
-black ./src/*.py
+black ./src/*.py ./test/*.py
 ```
