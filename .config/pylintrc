@@ -2,7 +2,7 @@
 init-hook='import sys; sys.path.append("./src/bfwrapper")'
 
 [MESSAGE CONTROL]
-disable = missing-module-docstring, missing-class-docstring, logging-fstring-interpolation, missing-function-docstring, logging-not-lazy
+disable = missing-module-docstring, missing-class-docstring, logging-fstring-interpolation, missing-function-docstring, logging-not-lazy, redefined-outer-name
 
 [DESIGN]
 max-args = 8

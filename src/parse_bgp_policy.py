@@ -7,7 +7,7 @@ import sys
 from logging import getLogger, Formatter, DEBUG, ERROR, FileHandler, StreamHandler
 from typing import Dict, List
 from ttp import ttp
-from XRTranslator import XRTranslator, PMEncoder
+from xr_translator import XRTranslator, PMEncoder
 
 
 # constants
@@ -197,10 +197,12 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
                 if "route-filter" in condition.keys():
                     prefix, *match_type_elem = condition["route-filter"].split()
                     logger.debug(f"    - match_type_elem length: {len(match_type_elem)}")
+                    # default
+                    length = {}
+                    match_type = ""
                     # exact
                     if len(match_type_elem) == 1:
                         # exact
-                        length = {}
                         match_type = match_type_elem[0]
                     elif len(match_type_elem) == 2:
                         if match_type_elem[0] == "prefix-length-range":
@@ -235,22 +237,22 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
 
                     conditions[i] = {"community": communities}
 
-            for i, action in enumerate(actions):
-                tmpactions = {}
+            for action in actions:
+                tmp_action = {}
                 if "as-path-prepend" in action.keys():
                     # logger.debug(f"as-path-prepend:::: " + str(action))
                     asn_list = action["as-path-prepend"].strip('"').split()
                     as_path_prepend_value = []
                     for asn in asn_list:
                         as_path_prepend_value.append({"asn": asn, "repeat": 1})
-                    tmpactions.update({"as-path-prepend": as_path_prepend_value})
+                    tmp_action.update({"as-path-prepend": as_path_prepend_value})
                     # conditions[i] = {"as-path-prepend": {"asn": asn}}
 
                 if "community" in action.keys():
                     # logger.debug(f"community:::: " + str(action))
                     community_action, community_name = action["community"].split()
 
-                    tmpactions.update(
+                    tmp_action.update(
                         {
                             "community": {
                                 "action": community_action,
@@ -258,7 +260,7 @@ def _convert_juniper_ttp_to_policy_model(ttp_output: dict) -> dict:
                             }
                         }
                     )
-                actions[i].update(tmpactions)
+                action.update(tmp_action)
 
             statement_data = {
                 "name": name,
@@ -376,6 +378,7 @@ def parse_cisco_ios_xr_bgp_policy(network: str, snapshot: str) -> None:
 
 
 if __name__ == "__main__":
+    # pylint: disable=duplicate-code
     parser = argparse.ArgumentParser(description="Collect configs to parse bgp-policy")
     parser.add_argument("--network", "-n", required=True, type=str, help="Specify a target network name")
     parser.add_argument(
@@ -386,6 +389,7 @@ if __name__ == "__main__":
         help="Specify a target snapshot name",
     )
     args = parser.parse_args()
+    # pylint: enable=duplicate-code
 
     parse_juniper_bgp_policy(args.network, args.snapshot)
     parse_cisco_ios_xr_bgp_policy(args.network, args.snapshot)

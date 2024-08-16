@@ -1,6 +1,6 @@
 import json
-from sys import stdout, argv
-from logging import getLogger, StreamHandler, Formatter, INFO, FileHandler, DEBUG
+from sys import argv
+from logging import getLogger
 from dataclasses import dataclass, field, asdict, is_dataclass
 from typing import Union, Self
 from enum import Enum
@@ -12,10 +12,10 @@ class PolicyPrefix(Enum):
 
 
 class PMEncoder(json.JSONEncoder):
-    def default(self, data):
-        if is_dataclass(data):
-            return asdict(data)
-        return json.JSONEncoder.default(self, data)
+    def default(self, o):
+        if is_dataclass(o):
+            return asdict(o)
+        return json.JSONEncoder.default(self, o)
 
 
 @dataclass
@@ -251,23 +251,16 @@ class XRTranslator:
                     aspath_data["as-path"].append(
                         {
                             "name": f"{aspath_obj['name']}_{i+1}",
-                            "pattern": self.translate_aspath_pattern(aspath_condition["pattern"])
+                            "pattern": self.translate_aspath_pattern(aspath_condition["pattern"]),
                         }
                     )
 
                 if "length" in aspath_condition.keys():
                     if aspath_condition["condition"] == "le":
-                        aspath_data["as-path"].append(
-                            {
-                                "length": {"max": aspath_condition["length"]}
-                            }
-                        )
+                        aspath_data["as-path"].append({"length": {"max": aspath_condition["length"]}})
                     elif aspath_condition["condition"] == "ge":
                         aspath_data["as-path"].append(
-                            {
-                                "name": f"{aspath_obj['name']}_{i+1}",
-                                "length": {"min": aspath_condition["length"]}
-                            }
+                            {"name": f"{aspath_obj['name']}_{i+1}", "length": {"min": aspath_condition["length"]}}
                         )
             self.aspath_set.append(aspath_data)
 

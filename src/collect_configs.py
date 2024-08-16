@@ -39,7 +39,7 @@ def read_node_props(network: str, snapshot: str) -> List:
     node_props_file = os.path.join(snapshot_dir, "node_props.csv")
     with open(node_props_file, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        rows = [row for row in reader]
+        rows = list(reader)
     return rows
 
 

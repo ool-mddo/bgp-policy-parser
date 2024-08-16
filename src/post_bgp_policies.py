@@ -105,6 +105,7 @@ def post_bgp_policy(network: str, snapshot: str) -> requests.Response:
 
 
 if __name__ == "__main__":
+    # pylint: disable=duplicate-code
     parser = argparse.ArgumentParser(description="Post BGP policies")
     parser.add_argument("--network", "-n", required=True, type=str, help="Specify a target network name")
     parser.add_argument(
@@ -115,6 +116,7 @@ if __name__ == "__main__":
         help="Specify a target snapshot name",
     )
     args = parser.parse_args()
+    # pylint: enable=duplicate-code
 
     print("Post policy data")
     response = post_bgp_policy(args.network, args.snapshot)
