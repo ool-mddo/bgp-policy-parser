@@ -1,0 +1,458 @@
+[
+  [
+    [
+      {
+        "interfaces": [
+          {
+            "address": "192.168.1.3/24",
+            "family": "inet",
+            "unit": "0",
+            "name": "ge-0/0/0"
+          },
+          {
+            "address": "192.168.0.9/30",
+            "family": "inet",
+            "unit": "0",
+            "name": "ge-0/0/1"
+          },
+          {
+            "address": "172.16.255.1/30",
+            "family": "inet",
+            "unit": "0",
+            "name": "ge-0/0/2"
+          },
+          {
+            "address": "172.16.0.6/30",
+            "family": "inet",
+            "unit": "0",
+            "name": "ge-0/0/3"
+          },
+          {
+            "address": "10.0.0.15/24",
+            "family": "inet",
+            "unit": "0",
+            "name": "fxp0"
+          },
+          {
+            "address": "192.168.255.5/32",
+            "family": "inet",
+            "unit": "0",
+            "name": "lo0"
+          }
+        ],
+        "bgp": {},
+        "ospf": {},
+        "prefix-sets": [
+          {
+            "name": "default-ipv4",
+            "prefixes": [
+              {
+                "prefix": "0.0.0.0/0"
+              }
+            ]
+          },
+          {
+            "name": "aggregated-ipv4",
+            "prefixes": [
+              {
+                "prefix": "10.100.0.0/16"
+              },
+              {
+                "prefix": "10.110.0.0/20"
+              },
+              {
+                "prefix": "10.120.0.0/17"
+              },
+              {
+                "prefix": "10.130.0.0/21"
+              }
+            ]
+          },
+          {
+            "name": "as65550-advd-ipv4",
+            "prefixes": [
+              {
+                "prefix": "10.100.0.0/16"
+              },
+              {
+                "prefix": "10.110.0.0/20"
+              },
+              {
+                "prefix": "10.120.0.0/17"
+              },
+              {
+                "prefix": "10.130.0.0/21"
+              }
+            ]
+          }
+        ],
+        "policies": [
+          {
+            "name": "as65520-peer-in1-tyo-ipv4",
+            "statements": {
+              "20": [
+                {
+                  "actions": [
+                    {
+                      "metric": "100"
+                    },
+                    {
+                      "local-preference": "300"
+                    },
+                    {
+                      "community": "set poi"
+                    },
+                    {
+                      "target": "accept"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "as65550-peer-in1-tyo-ipv4",
+            "statements": {
+              "10": [
+                {
+                  "conditions": [
+                    {
+                      "policy": "reject-in-rule-ipv4"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "target": "reject"
+                    }
+                  ]
+                }
+              ],
+              "20": [
+                {
+                  "conditions": [
+                    {
+                      "as-path-group": "as65550-origin"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "as-path-prepend": "\"65500 65500\""
+                    },
+                    {
+                      "metric": "100"
+                    },
+                    {
+                      "local-preference": "300"
+                    },
+                    {
+                      "community": "set peer"
+                    },
+                    {
+                      "target": "accept"
+                    }
+                  ]
+                }
+              ],
+              "30": [
+                {
+                  "conditions": [
+                    {
+                      "as-path-group": "any"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "as-path-prepend": "65501"
+                    },
+                    {
+                      "metric": "100"
+                    },
+                    {
+                      "local-preference": "200"
+                    },
+                    {
+                      "community": "set peer"
+                    },
+                    {
+                      "target": "accept"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "as65550-peer-out1-tyo-ipv4",
+            "statements": {
+              "20": [
+                {
+                  "conditions": [
+                    {
+                      "community": "aggregated"
+                    },
+                    {
+                      "prefix-list": "as65550-advd-ipv4"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "metric": "100"
+                    },
+                    {
+                      "community": "delete any"
+                    },
+                    {
+                      "next-hop": "self"
+                    },
+                    {
+                      "target": "accept"
+                    }
+                  ]
+                }
+              ],
+              "10": [
+                {
+                  "conditions": [
+                    {
+                      "policy": "reject-out-rule-ipv4"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "target": "reject"
+                    }
+                  ]
+                }
+              ]
+            },
+            "default": {
+              "actions": [
+                {
+                  "target": "reject"
+                }
+              ]
+            }
+          },
+          {
+            "name": "ibgp-export",
+            "statements": {
+              "1": [
+                {
+                  "conditions": [
+                    {
+                      "protocol": "bgp"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "local-preference": "100"
+                    },
+                    {
+                      "next-hop": "self"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "reject-in-rule-ipv4",
+            "statements": {
+              "10": [
+                {
+                  "conditions": [
+                    {
+                      "route-filter": "0.0.0.0/0 prefix-length-range /25-/32"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "target": "accept"
+                    }
+                  ]
+                }
+              ],
+              "20": [
+                {
+                  "conditions": [
+                    {
+                      "prefix-list-filter": "default-ipv4 exact"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "target": "accept"
+                    }
+                  ]
+                }
+              ],
+              "30": [
+                {
+                  "conditions": [
+                    {
+                      "prefix-list-filter": "aggregated-ipv4 orlonger"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "target": "accept"
+                    }
+                  ]
+                }
+              ],
+              "40": [
+                {
+                  "conditions": [
+                    {
+                      "as-path-group": "aspath-longer200"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "target": "accept"
+                    }
+                  ]
+                }
+              ]
+            },
+            "default": {
+              "actions": [
+                {
+                  "target": "reject"
+                }
+              ]
+            }
+          },
+          {
+            "name": "reject-out-rule-ipv4",
+            "statements": {
+              "10": [
+                {
+                  "conditions": [
+                    {
+                      "route-filter": "0.0.0.0/0 prefix-length-range /25-/32"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "target": "accept"
+                    }
+                  ]
+                }
+              ],
+              "20": [
+                {
+                  "conditions": [
+                    {
+                      "prefix-list-filter": "default-ipv4 exact"
+                    }
+                  ]
+                },
+                {
+                  "actions": [
+                    {
+                      "target": "accept"
+                    }
+                  ]
+                }
+              ]
+            },
+            "default": {
+              "actions": [
+                {
+                  "target": "reject"
+                }
+              ]
+            }
+          }
+        ],
+        "community-sets": [
+          {
+            "community": "aggregated",
+            "members": "65518:1"
+          },
+          {
+            "community": "any",
+            "members": "*:*"
+          },
+          {
+            "community": "peer",
+            "members": "65518:2"
+          },
+          {
+            "community": "poi",
+            "members": "65518:20"
+          }
+        ],
+        "aspath-sets": [
+          {
+            "group-name": "aspath-longer200",
+            "as-path": [
+              {
+              "name": "aspath-longer200",
+              "pattern": ".{200,}"
+            }
+            ]
+          },
+          {
+            "group-name": "any",
+            "as-path": [
+              {
+              "name": "any",
+              "pattern": ".*"
+            }
+            ]
+          },
+          {
+            "group-name": "as65550-origin",
+            "as-path": [
+              {
+              "name": "65550",
+              "pattern": "65550+"
+            }
+            ]
+          },
+          {
+            "group-name": "multiple-as-path",
+            "as-path": [
+              {
+                "name": "aspath1",
+                "pattern": "65001"
+              },
+              {
+                "name": "aspath2",
+                "pattern": "65002+ 65003+"
+              },
+              {
+                "name": "aspath3",
+                "pattern": "65004+ 65005+"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  ]
+]

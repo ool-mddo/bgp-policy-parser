@@ -6,11 +6,25 @@ import shutil
 import sys
 from typing import List
 
+from parse_bgp_policy import TTP_OUTPUTS_DIR, TTP_CONFIGS_DIR, TTP_BGP_POLICIES_DIR
 
 CONFIGS_DIR = os.environ.get("MDDO_CONFIGS_DIR", "./configs")
 QUERIES_DIR = os.environ.get("MDDO_QUERIES_DIR", "./queries")
-TTP_CONFIGS_DIR = os.environ.get("MDDO_TTP_CONFIGS_DIR", "./configs")
 OS_TYPES = ["JUNIPER", "CISCO_IOS_XR"]
+
+
+def cleanup_snapshot_dir(network: str, snapshot: str) -> None:
+    """Clean-up ttp working directory (snapshot directory)
+    Args:
+        network (str): Network name
+        snapshot (str): Snapshot name
+    Returns:
+        None
+    """
+    for work_dir_base in [TTP_CONFIGS_DIR, TTP_OUTPUTS_DIR, TTP_BGP_POLICIES_DIR]:
+        work_dir = os.path.join(work_dir_base, network, snapshot)
+        print(f"Cleanup TTP dir: {work_dir}", file=sys.stderr)
+        shutil.rmtree(work_dir)
 
 
 def read_node_props(network: str, snapshot: str) -> List:
@@ -23,13 +37,13 @@ def read_node_props(network: str, snapshot: str) -> List:
     """
     snapshot_dir = os.path.join(QUERIES_DIR, network, snapshot)
     node_props_file = os.path.join(snapshot_dir, "node_props.csv")
-    with open(node_props_file, "r") as f:
+    with open(node_props_file, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        rows = [row for row in reader]
+        rows = list(reader)
     return rows
 
 
-def detect_src_file_name(src_dir: os.path, node_name: str) -> str:
+def detect_src_file_name(src_dir: os.path, node_name: str) -> str | None:
     """Detect configuration file name using node name
     Args:
         src_dir (os.path): Source, snapshot directory (path)
@@ -46,6 +60,7 @@ def detect_src_file_name(src_dir: os.path, node_name: str) -> str:
         f"Error: source config is not found in {src_dir}, node_name:{node_name}",
         file=sys.stderr,
     )
+    return None
 
 
 def copy_configs(network: str, snapshot: str, node_props: List) -> None:
@@ -76,9 +91,7 @@ def copy_configs(network: str, snapshot: str, node_props: List) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collect configs to parse bgp-policy")
-    parser.add_argument(
-        "--network", "-n", required=True, type=str, help="Specify a target network name"
-    )
+    parser.add_argument("--network", "-n", required=True, type=str, help="Specify a target network name")
     parser.add_argument(
         "--snapshot",
         "-s",

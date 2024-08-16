@@ -45,6 +45,14 @@ interfaces { {{ _start_ }}
 </group>
 
 <group>
+protocols { {{ _start_ }}
+    <group name="{{ protocol }}">
+    {{ protocol }} {
+    }</group>
+} {{ _end_ }}
+</group>
+
+<group>
 policy-options { {{ _start_ }}
     
     <group name="prefix-sets*">
@@ -106,7 +114,7 @@ policy-options { {{ _start_ }}
 
     <group name="aspath-sets*">
     as-path-group {{ group-name }} {
-        <group name="as-path">
+        <group name="as-path*">
         as-path {{ name }} {{ pattern | resub(old='\"',new='',count=0) | _line_ }};
         </group>
     } {{ _end_ }}

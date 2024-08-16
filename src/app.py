@@ -8,11 +8,13 @@ import post_bgp_policies as post_bp
 app = Flask(__name__)
 app_logger = create_logger(app)
 logging.basicConfig(level=logging.DEBUG)
-#logging.basicConfig(level=logging.WARNING)
+# logging.basicConfig(level=logging.WARNING)
 
 
 @app.route("/bgp_policy/<network>/<snapshot>/parsed_result", methods=["POST"])
 def post_parsed_result(network: str, snapshot: str):
+    # cleanup
+    cc.cleanup_snapshot_dir(network, snapshot)
     # collect configs
     node_props = cc.read_node_props(network, snapshot)
     cc.copy_configs(network, snapshot, node_props)

@@ -1,0 +1,886 @@
+[
+  [
+    {
+      "vars": {
+        "begin_if": "(if|else|elseif)",
+        "end_if": "(endif|else|elseif)",
+        "pass_drop_done": "(pass|drop|done)",
+        "set_delete_prepend": "(set|delete|prepend)",
+        "not_if": "^(pass|drop|done|set|delete|apply).*",
+        "apply": "apply.*"
+      },
+      "interfaces": [
+        {
+          "name": "Loopback0",
+          "ipv4": {
+            "address": "192.168.255.7",
+            "mask": "255.255.255.255"
+          }
+        },
+        {
+          "name": "MgmtEth0/0/CPU0/0",
+          "ipv4": {
+            "address": "10.0.0.15",
+            "mask": "255.255.255.0"
+          }
+        },
+        {
+          "name": "GigabitEthernet0/0/0/0",
+          "ipv4": {
+            "address": "192.168.1.5",
+            "mask": "255.255.255.0"
+          }
+        },
+        {
+          "name": "GigabitEthernet0/0/0/1",
+          "ipv4": {
+            "address": "192.168.0.17",
+            "mask": "255.255.255.252"
+          }
+        },
+        {
+          "name": "GigabitEthernet0/0/0/2",
+          "ipv4": {
+            "address": "172.16.1.18",
+            "mask": "255.255.255.252"
+          }
+        },
+        {
+          "name": "GigabitEthernet0/0/0/3"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/4"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/5"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/6"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/7"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/8"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/9"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/10"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/11"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/12"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/13"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/14"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/15"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/16"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/17"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/18"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/19"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/20"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/21"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/22"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/23"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/24"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/25"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/26"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/27"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/28"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/29"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/30"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/31"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/32"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/33"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/34"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/35"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/36"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/37"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/38"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/39"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/40"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/41"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/42"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/43"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/44"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/45"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/46"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/47"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/48"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/49"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/50"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/51"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/52"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/53"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/54"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/55"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/56"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/57"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/58"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/59"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/60"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/61"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/62"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/63"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/64"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/65"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/66"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/67"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/68"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/69"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/70"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/71"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/72"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/73"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/74"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/75"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/76"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/77"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/78"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/79"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/80"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/81"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/82"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/83"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/84"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/85"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/86"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/87"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/88"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/89"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/90"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/91"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/92"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/93"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/94"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/95"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/96"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/97"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/98"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/99"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/100"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/101"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/102"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/103"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/104"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/105"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/106"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/107"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/108"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/109"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/110"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/111"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/112"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/113"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/114"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/115"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/116"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/117"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/118"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/119"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/120"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/121"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/122"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/123"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/124"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/125"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/126"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/127"
+        }
+      ],
+      "prefix-sets": [
+        {
+          "name": "as65550-advd",
+          "prefixes": [
+            {
+              "prefix": "10.100.0.0/16"
+            }
+          ]
+        },
+        {
+          "name": "default-ipv4",
+          "prefixes": [
+            {
+              "prefix": "0.0.0.0/0"
+            }
+          ]
+        },
+        {
+          "name": "longer24-ipv4",
+          "prefixes": [
+            {
+              "prefix": "0.0.0.0/0",
+              "condition": "ge 25"
+            }
+          ]
+        }
+      ],
+      "as-path-sets": [
+        {
+          "name": "any",
+          "conditions": [
+            {
+              "pattern": ".*"
+            }
+          ]
+        },
+        {
+          "name": "multiple-regex",
+          "conditions": [
+            {
+              "pattern": "^(65001_)+$"
+            },
+            {
+              "pattern": "^(65002_)+$"
+            }
+          ]
+        },
+        {
+          "name": "as65550-origin",
+          "conditions": [
+            {
+              "pattern": "^(65550_)+$"
+            }
+          ]
+        },
+        {
+          "name": "aspath-longer200",
+          "conditions": [
+            {
+              "condition": "ge",
+              "length": "200"
+            }
+          ]
+        }
+      ],
+      "community-sets": [
+        {
+          "name": "any",
+          "communities": [
+            {
+              "community": "*:*"
+            }
+          ]
+        },
+        {
+          "name": "poi",
+          "communities": [
+            {
+              "community": "65518:20"
+            }
+          ]
+        },
+        {
+          "name": "peer",
+          "communities": [
+            {
+              "community": "65518:2"
+            }
+          ]
+        },
+        {
+          "name": "aggregate",
+          "communities": [
+            {
+              "community": "65518:1"
+            }
+          ]
+        },
+        {
+          "name": "as65518-any",
+          "communities": [
+            {
+              "community": "65518:.*"
+            }
+          ]
+        }
+      ],
+      "policies": [
+        {
+          "name": "POI-East_in",
+          "rules": [
+            {
+              "action": "prepend",
+              "attr": "as-path",
+              "value": "50000 2"
+            },
+            {
+              "action": "set",
+              "attr": "med",
+              "value": "100"
+            },
+            {
+              "action": "set",
+              "attr": "local-preference",
+              "value": "300"
+            },
+            {
+              "action": "delete",
+              "attr": "community",
+              "value": "in any"
+            },
+            {
+              "action": "set",
+              "attr": "community",
+              "value": "poi"
+            },
+            {
+              "action": "done"
+            }
+          ]
+        },
+        {
+          "name": "reject-in-ipv4",
+          "rules": [
+            {
+              "if": "if",
+              "condition": {
+                "op": "state",
+                "matches": [
+                  "destination in longer24-ipv4"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "drop"
+                }
+              ]
+            },
+            {
+              "if": "if",
+              "condition": {
+                "op": "state",
+                "matches": [
+                  "destination in default-ipv4"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "drop"
+                }
+              ]
+            },
+            {
+              "if": "if",
+              "condition": {
+                "op": "state",
+                "matches": [
+                  "as-path in aspath-longer200"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "drop"
+                }
+              ]
+            },
+            {
+              "action": "pass"
+            }
+          ]
+        },
+        {
+          "name": "reject-out-ipv4",
+          "rules": [
+            {
+              "if": "if",
+              "condition": {
+                "op": "state",
+                "matches": [
+                  "destination in longer24-ipv4"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "drop"
+                }
+              ]
+            },
+            {
+              "if": "if",
+              "condition": {
+                "op": "state",
+                "matches": [
+                  "destination in default-ipv4"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "drop"
+                }
+              ]
+            },
+            {
+              "action": "pass"
+            }
+          ]
+        },
+        {
+          "name": "as65550-peer-in1-tyo-ipv4",
+          "rules": [
+            {
+              "action": "apply",
+              "value": "reject-in-ipv4"
+            },
+            {
+              "if": "if",
+              "condition": {
+                "op": "state",
+                "matches": [
+                  "as-path in as65550-origin"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "prepend",
+                  "attr": "as-path",
+                  "value": "60000"
+                },
+                {
+                  "action": "set",
+                  "attr": "local-preference",
+                  "value": "300"
+                },
+                {
+                  "action": "set",
+                  "attr": "med",
+                  "value": "100"
+                },
+                {
+                  "action": "set",
+                  "attr": "community",
+                  "value": "peer"
+                },
+                {
+                  "action": "done"
+                }
+              ]
+            },
+            {
+              "if": "if",
+              "condition": {
+                "op": "state",
+                "matches": [
+                  "as-path in any"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "set",
+                  "attr": "local-preference",
+                  "value": "210"
+                },
+                {
+                  "action": "set",
+                  "attr": "med",
+                  "value": "100"
+                },
+                {
+                  "action": "set",
+                  "attr": "community",
+                  "value": "peer"
+                },
+                {
+                  "action": "done"
+                }
+              ]
+            },
+            {
+              "action": "drop"
+            }
+          ]
+        },
+        {
+          "name": "as65550-peer-out1-tyo-ipv4",
+          "rules": [
+            {
+              "action": "apply",
+              "value": "reject-out-ipv4"
+            },
+            {
+              "if": "if",
+              "condition": {
+                "op": "state",
+                "matches": [
+                  "community matches-any aggregate"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "set",
+                  "attr": "med",
+                  "value": "100"
+                },
+                {
+                  "action": "delete",
+                  "attr": "community",
+                  "value": "in any"
+                },
+                {
+                  "action": "done"
+                }
+              ]
+            },
+            {
+              "action": "drop"
+            }
+          ]
+        },
+        {
+          "name": "as65550-peer-out2-tyo-ipv4",
+          "rules": [
+            {
+              "action": "apply",
+              "value": "reject-out-ipv4"
+            },
+            {
+              "if": "if",
+              "condition": {
+                "op": "and",
+                "matches": [
+                  "community matches-any aggregate",
+                  "destination in as65550-advd"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "set",
+                  "attr": "med",
+                  "value": "100"
+                },
+                {
+                  "action": "delete",
+                  "attr": "community",
+                  "value": "in any"
+                },
+                {
+                  "action": "done"
+                }
+              ]
+            },
+            {
+              "action": "drop"
+            }
+          ]
+        }
+      ],
+      "bgp": {
+        "asn": "65500",
+        "confederation": [
+          {
+            "attr": "identifier",
+            "value": "65518"
+          },
+          {
+            "attr": "peers",
+            "value": "65500"
+          }
+        ],
+        "router-id": {
+          "router-id": "192.168.255.7"
+        },
+        "af_ipv4_unicast": {},
+        "neighbors": [
+          {
+            "remote-as": "65520",
+            "remote-ip": "192.168.0.18",
+            "description": "POI-East",
+            "address-families": [
+              {
+                "afi": "ipv4",
+                "safi": "unicast",
+                "configs": {
+                  "attrs": [
+                    {
+                      "value": "send-community-ebgp"
+                    },
+                    {
+                      "value": "next-hop-self"
+                    },
+                    {
+                      "value": "remove-private-AS"
+                    }
+                  ],
+                  "route-policy": {
+                    "in": "POI-East_in"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "update-source": "Loopback0",
+            "remote-as": "65500",
+            "remote-ip": "192.168.255.1",
+            "description": "RR",
+            "address-families": [
+              {
+                "afi": "ipv4",
+                "safi": "unicast",
+                "configs": {
+                  "attrs": [
+                    {
+                      "value": "next-hop-self"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "update-source": "Loopback0",
+            "remote-as": "65500",
+            "remote-ip": "192.168.255.2",
+            "description": "RR",
+            "address-families": [
+              {
+                "afi": "ipv4",
+                "safi": "unicast",
+                "configs": {
+                  "attrs": [
+                    {
+                      "value": "next-hop-self"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+]
