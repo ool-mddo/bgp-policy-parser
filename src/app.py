@@ -1,4 +1,6 @@
 import logging
+import shutil
+import os
 from flask import Flask, jsonify
 from flask.logging import create_logger
 import collect_configs as cc
@@ -13,9 +15,16 @@ logging.basicConfig(level=logging.DEBUG)
 
 @app.route("/bgp_policy/<network>/<snapshot>/parsed_result", methods=["POST"])
 def post_parsed_result(network: str, snapshot: str):
-    # collect configs
+    # read node_props
     node_props = cc.read_node_props(network, snapshot)
+
+    # clean up previously generated files
+    shutil.rmtree(os.path.join(cc.TTP_CONFIGS_DIR, network, snapshot))
+    shutil.rmtree(os.path.join(parse_bp.BGP_POLICIES_DIR, network, snapshot))
+
+    # collect configs
     cc.copy_configs(network, snapshot, node_props)
+
     # parse bgp policy
     parse_bp.parse_juniper_bgp_policy(network, snapshot)
     parse_bp.parse_cisco_ios_xr_bgp_policy(network, snapshot)
