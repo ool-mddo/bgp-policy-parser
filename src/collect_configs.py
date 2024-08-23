@@ -23,6 +23,9 @@ def cleanup_snapshot_dir(network: str, snapshot: str) -> None:
     """
     for work_dir_base in [TTP_CONFIGS_DIR, TTP_OUTPUTS_DIR, TTP_BGP_POLICIES_DIR]:
         work_dir = os.path.join(work_dir_base, network, snapshot)
+        if not os.path.isdir(work_dir):
+            continue
+
         print(f"Cleanup TTP dir: {work_dir}", file=sys.stderr)
         shutil.rmtree(work_dir)
 
