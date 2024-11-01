@@ -1,19 +1,6 @@
 {
-  "node": "192.168.255.7",
+  "node": "192.168.255.2",
   "prefix-set": [
-    {
-      "name": "as65550-advd",
-      "prefixes": [
-        {
-          "prefix": "10.100.0.0/16",
-          "match-type": "exact",
-          "length": {
-            "min": "16",
-            "max": "16"
-          }
-        }
-      ]
-    },
     {
       "name": "default-ipv4",
       "prefixes": [
@@ -39,6 +26,80 @@
           }
         }
       ]
+    },
+    {
+      "name": "as65550-advd-ipv4",
+      "prefixes": [
+        {
+          "prefix": "10.100.0.0/16",
+          "match-type": "exact",
+          "length": {
+            "min": "16",
+            "max": "16"
+          }
+        },
+        {
+          "prefix": "10.110.0.0/20",
+          "match-type": "exact",
+          "length": {
+            "min": "20",
+            "max": "20"
+          }
+        },
+        {
+          "prefix": "10.120.0.0/17",
+          "match-type": "exact",
+          "length": {
+            "min": "17",
+            "max": "17"
+          }
+        },
+        {
+          "prefix": "10.130.0.0/21",
+          "match-type": "exact",
+          "length": {
+            "min": "21",
+            "max": "21"
+          }
+        }
+      ]
+    },
+    {
+      "name": "as65560-advd-ipv4",
+      "prefixes": [
+        {
+          "prefix": "10.100.0.0/16",
+          "match-type": "exact",
+          "length": {
+            "min": "16",
+            "max": "16"
+          }
+        },
+        {
+          "prefix": "10.110.0.0/20",
+          "match-type": "exact",
+          "length": {
+            "min": "20",
+            "max": "20"
+          }
+        },
+        {
+          "prefix": "10.120.0.0/17",
+          "match-type": "exact",
+          "length": {
+            "min": "17",
+            "max": "17"
+          }
+        },
+        {
+          "prefix": "10.130.0.0/21",
+          "match-type": "exact",
+          "length": {
+            "min": "21",
+            "max": "21"
+          }
+        }
+      ]
     }
   ],
   "as-path-set": [
@@ -52,24 +113,20 @@
       ]
     },
     {
-      "group-name": "multiple-regex",
-      "as-path": [
-        {
-          "name": "multiple-regex_1",
-          "pattern": "^(65001 )+$"
-        },
-        {
-          "name": "multiple-regex_2",
-          "pattern": "^(65002 )+$"
-        }
-      ]
-    },
-    {
       "group-name": "as65550-origin",
       "as-path": [
         {
           "name": "as65550-origin_1",
           "pattern": "^(65550 )+$"
+        }
+      ]
+    },
+    {
+      "group-name": "as65560-origin",
+      "as-path": [
+        {
+          "name": "as65560-origin_1",
+          "pattern": "^(65560 )+$"
         }
       ]
     },
@@ -135,14 +192,6 @@
           "name": "POI-East_in-10",
           "conditions": [],
           "actions": [
-            {
-              "as-path-prepend": [
-                {
-                  "asn": "50000",
-                  "repeat": 2
-                }
-              ]
-            },
             {
               "metric": "100"
             },
@@ -235,14 +284,7 @@
           "name": "10",
           "conditions": [
             {
-              "route-filter": {
-                "prefix": "0.0.0.0/0",
-                "match-type": "exact",
-                "length": {
-                  "min": "0",
-                  "max": "0"
-                }
-              }
+              "prefix-list": "default-ipv4"
             }
           ],
           "actions": [
@@ -455,14 +497,7 @@
           "name": "10",
           "conditions": [
             {
-              "route-filter": {
-                "prefix": "0.0.0.0/0",
-                "match-type": "exact",
-                "length": {
-                  "min": "0",
-                  "max": "0"
-                }
-              }
+              "prefix-list": "default-ipv4"
             }
           ],
           "actions": [
@@ -669,14 +704,6 @@
           ],
           "actions": [
             {
-              "as-path-prepend": [
-                {
-                  "asn": "60000",
-                  "repeat": 1
-                }
-              ]
-            },
-            {
               "local-preference": "300"
             },
             {
@@ -742,6 +769,9 @@
               "community": [
                 "aggregate"
               ]
+            },
+            {
+              "prefix-list": "as65550-advd-ipv4"
             }
           ],
           "actions": [
@@ -788,6 +818,15 @@
       "name": "as65550-peer-out1-tyo-ipv4",
       "statements": [
         {
+          "name": "_generated_next-hop-self",
+          "conditions": [],
+          "actions": [
+            {
+              "next-hop": "self"
+            }
+          ]
+        },
+        {
           "name": "as65550-peer-out1-tyo-ipv4-10",
           "conditions": [],
           "actions": [
@@ -833,25 +872,13 @@
       }
     },
     {
-      "name": "if-condition-as65550-peer-out2-tyo-ipv4-20",
+      "name": "if-condition-as65560-peer-in1-tyo-ipv4-20",
       "statements": [
         {
           "name": "10",
           "conditions": [
             {
-              "community": [
-                "aggregate"
-              ]
-            },
-            {
-              "route-filter": {
-                "prefix": "10.100.0.0/16",
-                "match-type": "exact",
-                "length": {
-                  "min": "16",
-                  "max": "16"
-                }
-              }
+              "as-path-group": "as65560-origin"
             }
           ],
           "actions": [
@@ -870,13 +897,13 @@
       }
     },
     {
-      "name": "not-if-condition-as65550-peer-out2-tyo-ipv4-20",
+      "name": "not-if-condition-as65560-peer-in1-tyo-ipv4-20",
       "statements": [
         {
           "name": "10",
           "conditions": [
             {
-              "policy": "if-condition-as65550-peer-out2-tyo-ipv4-20"
+              "policy": "if-condition-as65560-peer-in1-tyo-ipv4-20"
             }
           ],
           "actions": [
@@ -895,10 +922,200 @@
       }
     },
     {
-      "name": "as65550-peer-out2-tyo-ipv4",
+      "name": "if-condition-as65560-peer-in1-tyo-ipv4-30",
       "statements": [
         {
-          "name": "as65550-peer-out2-tyo-ipv4-10",
+          "name": "10",
+          "conditions": [
+            {
+              "as-path-group": "any"
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-as65560-peer-in1-tyo-ipv4-30",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-as65560-peer-in1-tyo-ipv4-30"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "as65560-peer-in1-tyo-ipv4",
+      "statements": [
+        {
+          "name": "as65560-peer-in1-tyo-ipv4-10",
+          "conditions": [],
+          "actions": [
+            {
+              "apply": "reject-in-ipv4"
+            }
+          ]
+        },
+        {
+          "name": "as65560-peer-in1-tyo-ipv4-20",
+          "conditions": [
+            {
+              "policy": "if-condition-as65560-peer-in1-tyo-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "local-preference": "300"
+            },
+            {
+              "metric": "100"
+            },
+            {
+              "community": {
+                "action": "set",
+                "name": "peer"
+              }
+            },
+            {
+              "target": "accept"
+            }
+          ]
+        },
+        {
+          "name": "as65560-peer-in1-tyo-ipv4-30",
+          "conditions": [
+            {
+              "policy": "if-condition-as65560-peer-in1-tyo-ipv4-30"
+            }
+          ],
+          "actions": [
+            {
+              "local-preference": "210"
+            },
+            {
+              "metric": "100"
+            },
+            {
+              "community": {
+                "action": "set",
+                "name": "peer"
+              }
+            },
+            {
+              "target": "accept"
+            }
+          ]
+        },
+        {
+          "name": "as65560-peer-in1-tyo-ipv4-40",
+          "conditions": [],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": []
+      }
+    },
+    {
+      "name": "if-condition-as65560-peer-out1-tyo-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "community": [
+                "aggregate"
+              ]
+            },
+            {
+              "prefix-list": "as65560-advd-ipv4"
+            }
+          ],
+          "actions": [
+            {
+              "target": "accept"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "not-if-condition-as65560-peer-out1-tyo-ipv4-20",
+      "statements": [
+        {
+          "name": "10",
+          "conditions": [
+            {
+              "policy": "if-condition-as65560-peer-out1-tyo-ipv4-20"
+            }
+          ],
+          "actions": [
+            {
+              "target": "reject"
+            }
+          ]
+        }
+      ],
+      "default": {
+        "actions": [
+          {
+            "target": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "name": "as65560-peer-out1-tyo-ipv4",
+      "statements": [
+        {
+          "name": "_generated_next-hop-self",
+          "conditions": [],
+          "actions": [
+            {
+              "next-hop": "self"
+            }
+          ]
+        },
+        {
+          "name": "as65560-peer-out1-tyo-ipv4-10",
           "conditions": [],
           "actions": [
             {
@@ -907,10 +1124,10 @@
           ]
         },
         {
-          "name": "as65550-peer-out2-tyo-ipv4-20",
+          "name": "as65560-peer-out1-tyo-ipv4-20",
           "conditions": [
             {
-              "policy": "if-condition-as65550-peer-out2-tyo-ipv4-20"
+              "policy": "if-condition-as65560-peer-out1-tyo-ipv4-20"
             }
           ],
           "actions": [
@@ -929,7 +1146,7 @@
           ]
         },
         {
-          "name": "as65550-peer-out2-tyo-ipv4-30",
+          "name": "as65560-peer-out1-tyo-ipv4-30",
           "conditions": [],
           "actions": [
             {
@@ -969,8 +1186,8 @@
   ],
   "bgp_neighbors": [
     {
-      "remote_as": "65520",
-      "remote_ip": "192.168.0.18",
+      "remote_as": "65550",
+      "remote_ip": "172.16.0.9",
       "address_families": [
         {
           "afi": "ipv4",
@@ -978,14 +1195,29 @@
           "send_community_ebgp": true,
           "next_hop_self": true,
           "remove_private_as": true,
-          "route_policy_in": "POI-East_in",
-          "route_policy_out": ""
+          "route_policy_in": "as65550-peer-in1-tyo-ipv4",
+          "route_policy_out": "as65550-peer-out1-tyo-ipv4"
+        }
+      ]
+    },
+    {
+      "remote_as": "65560",
+      "remote_ip": "172.16.1.9",
+      "address_families": [
+        {
+          "afi": "ipv4",
+          "safi": "unicast",
+          "send_community_ebgp": true,
+          "next_hop_self": true,
+          "remove_private_as": true,
+          "route_policy_in": "as65560-peer-in1-tyo-ipv4",
+          "route_policy_out": "as65560-peer-out1-tyo-ipv4"
         }
       ]
     },
     {
       "remote_as": "65500",
-      "remote_ip": "192.168.255.1",
+      "remote_ip": "192.168.255.101",
       "address_families": [
         {
           "afi": "ipv4",
@@ -1000,7 +1232,7 @@
     },
     {
       "remote_as": "65500",
-      "remote_ip": "192.168.255.2",
+      "remote_ip": "192.168.255.102",
       "address_families": [
         {
           "afi": "ipv4",
