@@ -387,11 +387,33 @@ class XRTranslator:
         self.logger.info(f"{prefix_list_name} is not match in prefix-list_data")
         return route_filter_list
 
+    def check_prefix_list_only_exact_matchtype(self, prefix_list_name: str) -> bool:
+        """Check prefix-list contain match-type only exact
+        Args:
+            prefix_list_name (str): prefix_list name of Conversion target
+        Returns:
+            Bool: True if prefix-list contain only exact match-type, False if not
+        """
+
+        for item in self.prefix_set:
+            if item["name"] == prefix_list_name:
+                for prefix_item in item["prefixes"]:
+                    if prefix_item["match-type"] == "exact":
+                        continue
+                    else:
+                        self.logger.info(f"{prefix_list_name} contain not exact match-type")
+                        return False
+                return True
+
     def translate_match(self, match: str) -> list | None:
         condition = []
         # destination in prefix-list
         if match.split()[0] == "destination":
-            condition = self.convert_prefix_list_into_route_filter(match.split()[-1])
+            ## if prefix-listの中身がexactのみの場合、prefix-listをroute-policyへ変換せずにポリシーモデルに入れる
+            if self.check_prefix_list_only_exact_matchtype(match.split()[-1]):
+                condition = [{"prefix-list": match.split()[-1]}]
+            else:
+                condition = self.convert_prefix_list_into_route_filter(match.split()[-1])
             return condition
 
         # as-path in as-path-set

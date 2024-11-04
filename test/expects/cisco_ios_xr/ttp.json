@@ -13,7 +13,7 @@
         {
           "name": "Loopback0",
           "ipv4": {
-            "address": "192.168.255.7",
+            "address": "192.168.255.2",
             "mask": "255.255.255.255"
           }
         },
@@ -27,23 +27,29 @@
         {
           "name": "GigabitEthernet0/0/0/0",
           "ipv4": {
-            "address": "192.168.1.5",
+            "address": "192.168.1.2",
             "mask": "255.255.255.0"
           }
         },
         {
-          "name": "GigabitEthernet0/0/0/1",
+          "name": "GigabitEthernet0/0/0/1"
+        },
+        {
+          "name": "GigabitEthernet0/0/0/1.100",
           "ipv4": {
-            "address": "192.168.0.17",
+            "address": "172.16.0.10",
             "mask": "255.255.255.252"
           }
         },
         {
-          "name": "GigabitEthernet0/0/0/2",
+          "name": "GigabitEthernet0/0/0/1.200",
           "ipv4": {
-            "address": "172.16.1.18",
+            "address": "172.16.1.10",
             "mask": "255.255.255.252"
           }
+        },
+        {
+          "name": "GigabitEthernet0/0/0/2"
         },
         {
           "name": "GigabitEthernet0/0/0/3"
@@ -423,14 +429,6 @@
       ],
       "prefix-sets": [
         {
-          "name": "as65550-advd",
-          "prefixes": [
-            {
-              "prefix": "10.100.0.0/16"
-            }
-          ]
-        },
-        {
           "name": "default-ipv4",
           "prefixes": [
             {
@@ -446,6 +444,40 @@
               "condition": "ge 25"
             }
           ]
+        },
+        {
+          "name": "as65550-advd-ipv4",
+          "prefixes": [
+            {
+              "prefix": "10.100.0.0/16"
+            },
+            {
+              "prefix": "10.110.0.0/20"
+            },
+            {
+              "prefix": "10.120.0.0/17"
+            },
+            {
+              "prefix": "10.130.0.0/21"
+            }
+          ]
+        },
+        {
+          "name": "as65560-advd-ipv4",
+          "prefixes": [
+            {
+              "prefix": "10.100.0.0/16"
+            },
+            {
+              "prefix": "10.110.0.0/20"
+            },
+            {
+              "prefix": "10.120.0.0/17"
+            },
+            {
+              "prefix": "10.130.0.0/21"
+            }
+          ]
         }
       ],
       "as-path-sets": [
@@ -458,21 +490,18 @@
           ]
         },
         {
-          "name": "multiple-regex",
-          "conditions": [
-            {
-              "pattern": "^(65001_)+$"
-            },
-            {
-              "pattern": "^(65002_)+$"
-            }
-          ]
-        },
-        {
           "name": "as65550-origin",
           "conditions": [
             {
               "pattern": "^(65550_)+$"
+            }
+          ]
+        },
+        {
+          "name": "as65560-origin",
+          "conditions": [
+            {
+              "pattern": "^(65560_)+$"
             }
           ]
         },
@@ -532,11 +561,6 @@
         {
           "name": "POI-East_in",
           "rules": [
-            {
-              "action": "prepend",
-              "attr": "as-path",
-              "value": "50000 2"
-            },
             {
               "action": "set",
               "attr": "med",
@@ -665,11 +689,6 @@
               },
               "rules": [
                 {
-                  "action": "prepend",
-                  "attr": "as-path",
-                  "value": "60000"
-                },
-                {
                   "action": "set",
                   "attr": "local-preference",
                   "value": "300"
@@ -733,9 +752,10 @@
             {
               "if": "if",
               "condition": {
-                "op": "state",
+                "op": "and",
                 "matches": [
-                  "community matches-any aggregate"
+                  "community matches-any aggregate",
+                  "destination in as65550-advd-ipv4"
                 ]
               },
               "rules": [
@@ -760,7 +780,77 @@
           ]
         },
         {
-          "name": "as65550-peer-out2-tyo-ipv4",
+          "name": "as65560-peer-in1-tyo-ipv4",
+          "rules": [
+            {
+              "action": "apply",
+              "value": "reject-in-ipv4"
+            },
+            {
+              "if": "if",
+              "condition": {
+                "op": "state",
+                "matches": [
+                  "as-path in as65560-origin"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "set",
+                  "attr": "local-preference",
+                  "value": "300"
+                },
+                {
+                  "action": "set",
+                  "attr": "med",
+                  "value": "100"
+                },
+                {
+                  "action": "set",
+                  "attr": "community",
+                  "value": "peer"
+                },
+                {
+                  "action": "done"
+                }
+              ]
+            },
+            {
+              "if": "if",
+              "condition": {
+                "op": "state",
+                "matches": [
+                  "as-path in any"
+                ]
+              },
+              "rules": [
+                {
+                  "action": "set",
+                  "attr": "local-preference",
+                  "value": "210"
+                },
+                {
+                  "action": "set",
+                  "attr": "med",
+                  "value": "100"
+                },
+                {
+                  "action": "set",
+                  "attr": "community",
+                  "value": "peer"
+                },
+                {
+                  "action": "done"
+                }
+              ]
+            },
+            {
+              "action": "drop"
+            }
+          ]
+        },
+        {
+          "name": "as65560-peer-out1-tyo-ipv4",
           "rules": [
             {
               "action": "apply",
@@ -772,7 +862,7 @@
                 "op": "and",
                 "matches": [
                   "community matches-any aggregate",
-                  "destination in as65550-advd"
+                  "destination in as65560-advd-ipv4"
                 ]
               },
               "rules": [
@@ -810,14 +900,14 @@
           }
         ],
         "router-id": {
-          "router-id": "192.168.255.7"
+          "router-id": "192.168.255.2"
         },
         "af_ipv4_unicast": {},
         "neighbors": [
           {
-            "remote-as": "65520",
-            "remote-ip": "192.168.0.18",
-            "description": "POI-East",
+            "remote-as": "65550",
+            "remote-ip": "172.16.0.9",
+            "description": "AS65550_PNI1-2_ipv4",
             "address-families": [
               {
                 "afi": "ipv4",
@@ -835,7 +925,36 @@
                     }
                   ],
                   "route-policy": {
-                    "in": "POI-East_in"
+                    "out": "as65550-peer-out1-tyo-ipv4",
+                    "in": "as65550-peer-in1-tyo-ipv4"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "remote-as": "65560",
+            "remote-ip": "172.16.1.9",
+            "description": "AS65560_PNI2-1_ipv4",
+            "address-families": [
+              {
+                "afi": "ipv4",
+                "safi": "unicast",
+                "configs": {
+                  "attrs": [
+                    {
+                      "value": "send-community-ebgp"
+                    },
+                    {
+                      "value": "next-hop-self"
+                    },
+                    {
+                      "value": "remove-private-AS"
+                    }
+                  ],
+                  "route-policy": {
+                    "out": "as65560-peer-out1-tyo-ipv4",
+                    "in": "as65560-peer-in1-tyo-ipv4"
                   }
                 }
               }
@@ -844,7 +963,7 @@
           {
             "update-source": "Loopback0",
             "remote-as": "65500",
-            "remote-ip": "192.168.255.1",
+            "remote-ip": "192.168.255.101",
             "description": "RR",
             "address-families": [
               {
@@ -863,7 +982,7 @@
           {
             "update-source": "Loopback0",
             "remote-as": "65500",
-            "remote-ip": "192.168.255.2",
+            "remote-ip": "192.168.255.102",
             "description": "RR",
             "address-families": [
               {
