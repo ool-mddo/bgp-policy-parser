@@ -15,9 +15,9 @@
 
 | 保存するもの | デフォルト | 環境変数(優先) |
 |--------------|------------|----------------|
-| 分析対象のコンフィグファイル | ttp/configs | `MDDO_BGP_POLICY_PARSER_CONFIGS_DIR` |
-| 分析結果(ベンダ依存) | ttp/outputs | `MDDO_BGP_POLICY_PARSER_OUTPUTS_DIR` |
-| 分析結果(標準化) | ttp/bgp_policies | `MDDO_BGP_POLICY_PARSER_POLICIES_DIR` |
+| 分析対象のコンフィグファイル | ./configs | `MDDO_BGP_POLICY_PARSER_CONFIGS_DIR` |
+| 分析結果(ベンダ依存) | ./ttp_output | `MDDO_BGP_POLICY_PARSER_OUTPUTS_DIR` |
+| 分析結果(標準化) | ./policy_model_output | `MDDO_BGP_POLICY_PARSER_POLICIES_DIR` |
 
 
 # ツール単体での使用方法
