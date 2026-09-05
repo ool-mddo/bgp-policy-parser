@@ -9,6 +9,17 @@
 
 このツールは[playground](https://github.com/ool-mddo/playground)のシステムにおいて、実機のコンフィグからOS非依存なBGPポリシーのコンフィグデータを生成するために使用しています。
 
+# 環境変数
+
+入出力で使用するファイルは以下のディレクトリに保存されます。環境変数で指定されている場合、そちらが優先されます
+
+| 保存するもの | デフォルト | 環境変数(優先) |
+|--------------|------------|----------------|
+| 分析対象のコンフィグファイル | ./configs | `MDDO_BGP_POLICY_PARSER_CONFIGS_DIR` |
+| 分析結果(ベンダ依存) | ./ttp_output | `MDDO_BGP_POLICY_PARSER_OUTPUTS_DIR` |
+| 分析結果(標準化) | ./policy_model_output | `MDDO_BGP_POLICY_PARSER_POLICIES_DIR` |
+
+
 # ツール単体での使用方法
 
 > [!NOTE]

@@ -6,7 +6,7 @@ import os
 import re
 import requests
 
-BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_output")
+BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICY_PARSER_POLICIES_DIR", "./policy_model_output")
 MODEL_CONDUCTOR_HOST = os.environ.get("MODEL_CONDUCTOR_HOST", "model-conductor:9292")
 
 

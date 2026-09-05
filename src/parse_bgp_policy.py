@@ -13,10 +13,9 @@ from xr_translator import XRTranslator, PMEncoder
 # constants
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 TTP_TEMPLATES_DIR = os.path.join(SRC_DIR, "template")
-TTP_CONFIGS_DIR = os.environ.get("MDDO_TTP_CONFIGS_DIR", "./configs")
-TTP_OUTPUTS_DIR = os.environ.get("MDDO_TTP_OUTPUTS_DIR", "./ttp_output")
-TTP_BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICIES_DIR", "./policy_model_output")
-
+TTP_CONFIGS_DIR = os.environ.get("MDDO_BGP_POLICY_PARSER_CONFIGS_DIR", "./configs")
+TTP_OUTPUTS_DIR = os.environ.get("MDDO_BGP_POLICY_PARSER_OUTPUTS_DIR", "./ttp_output")
+TTP_BGP_POLICIES_DIR = os.environ.get("MDDO_BGP_POLICY_PARSER_POLICIES_DIR", "./policy_model_output")
 
 logger = getLogger("main")
 logger.setLevel(DEBUG)
